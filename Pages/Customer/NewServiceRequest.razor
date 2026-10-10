@@ -1,0 +1,212 @@
+@page "/customer/request/new"
+
+@attribute [Authorize(Roles = "Customer")]
+
+@layout CustomerLayout
+
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using WorkServices.Web.Auth
+@using WorkServices.Web.Features.ServiceRequests
+@using WorkServices.Web.Features.ServiceRequests.Models
+@using WorkServices.Web.Layout
+
+@inject ServiceRequestService ServiceRequestService
+@inject WorkServicesAuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Request a Service | WorkServices</PageTitle>
+
+<div class="container-fluid p-4">
+
+    <div class="mb-4">
+        <h1>Request a Service</h1>
+
+        <p class="text-muted">
+            Tell us what work you need done.
+        </p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-body p-4">
+
+            <EditForm Model="@model"
+                      OnValidSubmit="@SubmitAsync">
+
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Service Type
+                    </label>
+
+                    <InputNumber @bind-Value="model.ServiceType"
+                                 class="form-control" />
+
+                    <ValidationMessage
+                        For="@(() => model.ServiceType)" />
+
+                    <div class="form-text">
+                        We will replace this with the
+                        WorkServices service catalogue.
+                    </div>
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Describe the work
+                    </label>
+
+                    <InputTextArea
+                        @bind-Value="model.Description"
+                        class="form-control"
+                        rows="5" />
+
+                    <ValidationMessage
+                        For="@(() => model.Description)" />
+
+                </div>
+
+                <div class="mb-4">
+
+                    <label class="form-label">
+                        Service Address
+                    </label>
+
+                    <InputText
+                        @bind-Value="model.Address"
+                        class="form-control" />
+
+                    <ValidationMessage
+                        For="@(() => model.Address)" />
+
+                </div>
+
+                <button class="btn btn-primary"
+                        type="submit"
+                        disabled="@isSubmitting">
+
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2">
+                        </span>
+
+                        <span>Submitting...</span>
+                    }
+                    else
+                    {
+                        <span>Submit Request</span>
+                    }
+
+                </button>
+
+            </EditForm>
+
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+    private readonly FormModel model = new();
+
+    private bool isSubmitting;
+
+    private string errorMessage = string.Empty;
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var authenticationState =
+                await AuthenticationStateProvider
+                    .GetAuthenticationStateAsync();
+
+            var user =
+                authenticationState.User;
+
+            var customerIdClaim =
+                user.FindFirst(
+                    ClaimTypes.NameIdentifier)?.Value;
+
+            if (!Guid.TryParse(
+                    customerIdClaim,
+                    out var customerId))
+            {
+                errorMessage =
+                    "Your authenticated user ID could not be determined.";
+
+                return;
+            }
+
+            var request =
+                new CreateServiceRequestRequest
+                {
+                    CustomerId = customerId,
+                    ServiceType = model.ServiceType,
+                    Description = model.Description.Trim(),
+                    Address = model.Address.Trim()
+                };
+
+            var created =
+                await ServiceRequestService.CreateAsync(request);
+
+            if (created is null)
+            {
+                errorMessage =
+                    "The service request was created, but no request details were returned.";
+
+                return;
+            }
+
+            NavigationManager.NavigateTo(
+                $"/customer/request/{created.Id}");
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage =
+                "Unable to submit your request. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private sealed class FormModel
+    {
+        [Range(
+            1,
+            int.MaxValue,
+            ErrorMessage = "Select a service type.")]
+        public int ServiceType { get; set; }
+
+        [Required(
+            ErrorMessage = "Please describe the work you need.")]
+        [MinLength(
+            10,
+            ErrorMessage = "Please provide a little more detail.")]
+        public string Description { get; set; } = string.Empty;
+
+        [Required(
+            ErrorMessage = "Please provide the service address.")]
+        public string Address { get; set; } = string.Empty;
+    }
+}

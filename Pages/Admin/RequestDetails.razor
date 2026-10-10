@@ -1,0 +1,73 @@
+@page "/admin/requests/{Id:guid}"
+@attribute [Authorize(Roles = "Admin")]
+@inject ApiClient Api
+
+<PageTitle>Admin Request Details</PageTitle>
+
+<div class="container py-4">
+    <h1>Request details</h1>
+
+    @if (Busy)
+    {
+        <p>Loading...</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger">@Error</div>
+    }
+    else if (Request is not null)
+    {
+        <div class="card p-4">
+            <h2>@Request.Description</h2>
+            <StatusBadge Status="Request.Status" />
+
+            <dl class="row mt-3">
+                <dt class="col-sm-3">Request ID</dt>
+                <dd class="col-sm-9">@Request.Id</dd>
+
+                <dt class="col-sm-3">Customer</dt>
+                <dd class="col-sm-9">@(Request.CustomerName ?? Request.CustomerId.ToString())</dd>
+
+                <dt class="col-sm-3">Artisan</dt>
+                <dd class="col-sm-9">@(Request.ArtisanName ?? "Unassigned")</dd>
+
+                <dt class="col-sm-3">Address</dt>
+                <dd class="col-sm-9">@Request.Address</dd>
+
+                <dt class="col-sm-3">Created</dt>
+                <dd class="col-sm-9">@Request.CreatedAt.ToLocalTime().ToString("g")</dd>
+            </dl>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ServiceRequestDto? Request;
+    private bool Busy = true;
+    private string? Error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Busy = true;
+        Error = null;
+
+        try
+        {
+            Request = await Api.GetAsync<ServiceRequestDto>(
+                $"service-requests/{Id}");
+
+            if (Request is null)
+                Error = "Request not found.";
+        }
+        catch
+        {
+            Error = "Unable to load this request.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}

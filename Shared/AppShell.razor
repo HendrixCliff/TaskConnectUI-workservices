@@ -1,0 +1,153 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using WorkServices.Web.Auth
+
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="app-shell">
+
+    <header class="app-header">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center justify-content-between">
+
+                <a href="@GetDashboardUrl()"
+                   class="text-decoration-none fw-bold fs-4">
+                    WorkServices
+                </a>
+
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="d-flex align-items-center gap-3">
+
+                            <span class="text-muted">
+                                @context.User.Identity?.Name
+                            </span>
+
+                            <button type="button"
+                                    class="btn btn-outline-secondary btn-sm"
+                                    @onclick="LogoutAsync">
+                                Logout
+                            </button>
+
+                        </div>
+                    </Authorized>
+
+                    <NotAuthorized>
+                        <a href="/login"
+                           class="btn btn-primary btn-sm">
+                            Login
+                        </a>
+                    </NotAuthorized>
+                </AuthorizeView>
+
+            </div>
+        </div>
+    </header>
+
+    <div class="app-body">
+
+        @if (Role != "Public")
+        {
+            <aside class="dashboard-sidebar">
+
+                <div class="p-4">
+                    <a href="@GetDashboardUrl()"
+                       class="text-decoration-none fw-bold fs-4">
+                        WorkServices
+                    </a>
+                </div>
+
+                <nav class="nav flex-column px-3">
+
+                    @if (Role == "Customer")
+                    {
+                        <NavLink class="nav-link"
+                                 href="/customer"
+                                 Match="NavLinkMatch.All">
+                            Dashboard
+                        </NavLink>
+
+                        <NavLink class="nav-link"
+                                 href="/customer/requests">
+                            My Requests
+                        </NavLink>
+
+                        <NavLink class="nav-link"
+                                 href="/customer/request/new">
+                            Request a Service
+                        </NavLink>
+                    }
+                    else if (Role == "Artisan")
+                    {
+                        <NavLink class="nav-link"
+                                 href="/artisan"
+                                 Match="NavLinkMatch.All">
+                            Dashboard
+                        </NavLink>
+
+                        <NavLink class="nav-link"
+                                 href="/artisan/jobs">
+                            My Jobs
+                        </NavLink>
+
+                        <NavLink class="nav-link"
+                                 href="/artisan/profile">
+                            Profile
+                        </NavLink>
+                    }
+                    else if (Role == "Admin")
+                    {
+                        <NavLink class="nav-link"
+                                 href="/admin"
+                                 Match="NavLinkMatch.All">
+                            Dashboard
+                        </NavLink>
+
+                        <NavLink class="nav-link"
+                                 href="/admin/service-requests">
+                            Service Requests
+                        </NavLink>
+                    }
+
+                </nav>
+
+            </aside>
+        }
+
+        <main class="dashboard-content">
+            @ChildContent
+        </main>
+
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public string Role { get; set; } = "Public";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string GetDashboardUrl()
+    {
+        return Role switch
+        {
+            "Customer" => "/customer",
+            "Artisan" => "/artisan",
+            "Admin" => "/admin",
+            _ => "/"
+        };
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+
+        Navigation.NavigateTo(
+            "/login",
+            forceLoad: true);
+    }
+}
+

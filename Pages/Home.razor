@@ -1,0 +1,105 @@
+@page "/"
+
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject NavigationManager NavigationManager
+
+<AuthorizeView>
+    <Authorized>
+        <div class="container py-5">
+            <h1>Welcome to WorkServices</h1>
+
+            <p class="text-muted">
+                Redirecting you to your dashboard...
+            </p>
+        </div>
+    </Authorized>
+
+    <NotAuthorized>
+        <div class="container py-5">
+
+            <div class="text-center">
+                <h1>WorkServices</h1>
+
+                <p class="lead">
+                    Connect with trusted artisans for your
+                    home and office service needs.
+                </p>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="/login"
+                       class="btn btn-primary">
+                        Login
+                    </a>
+
+                    <a href="/register/customer"
+                       class="btn btn-outline-primary">
+                        Get Started
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnAfterRenderAsync(
+        bool firstRender)
+    {
+        if (!firstRender ||
+            AuthenticationStateTask is null)
+        {
+            return;
+        }
+
+       var state =
+    await AuthenticationStateTask;
+
+    if (state.User.Identity?.IsAuthenticated != true)
+    {
+        return;
+    }
+
+        var role =
+            state.User.FindFirst(
+                System.Security.Claims.ClaimTypes.Role)?.Value;
+
+        if (string.Equals(
+                role,
+                "Admin",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo(
+                "/admin",
+                replace: true);
+
+            return;
+        }
+
+        if (string.Equals(
+                role,
+                "Artisan",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo(
+                "/artisan",
+                replace: true);
+
+            return;
+        }
+
+        if (string.Equals(
+                role,
+                "Customer",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            NavigationManager.NavigateTo(
+                "/customer",
+                replace: true);
+        }
+    }
+}

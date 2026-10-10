@@ -1,0 +1,72 @@
+@page "/artisan/profile"
+@attribute [Authorize(Roles = "Artisan")]
+@inject AuthService AuthService
+
+<PageTitle>My Profile</PageTitle>
+
+<div class="container py-4">
+    <h1>My artisan profile</h1>
+
+    @if (Busy)
+    {
+        <p>Loading profile...</p>
+    }
+    else if (User is null)
+    {
+        <div class="alert alert-warning">
+            Your profile could not be loaded. Please sign in again.
+        </div>
+    }
+    else
+    {
+        <div class="card p-4" style="max-width: 700px">
+            <div class="rounded-circle bg-primary text-white d-flex
+                        justify-content-center align-items-center mb-3"
+                 style="width:72px;height:72px;font-size:28px">
+                @Initials
+            </div>
+
+            <h2>@User.FullName</h2>
+
+            <dl class="row mt-3">
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9">@User.Email</dd>
+
+                <dt class="col-sm-3">Account role</dt>
+                <dd class="col-sm-9">@User.Role</dd>
+
+                <dt class="col-sm-3">Account ID</dt>
+                <dd class="col-sm-9">@User.Id</dd>
+            </dl>
+
+            <p class="text-muted">
+                Additional professional information can be displayed here
+                once the artisan profile endpoint is connected.
+            </p>
+        </div>
+    }
+</div>
+
+@code {
+    private CurrentUser? User;
+    private bool Busy = true;
+
+    private string Initials =>
+        string.Join("", (User?.FullName ?? "")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Take(2)
+            .Select(part => char.ToUpperInvariant(part[0])));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            User = await AuthService.GetCurrentUserAsync();
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}
+

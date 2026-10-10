@@ -1,0 +1,130 @@
+@page "/admin/service-request/{ServiceRequestId:guid}/assign"
+
+@attribute [Authorize(Roles = "Admin")]
+
+@layout AdminLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using WorkServices.Web.Features.JobAssignments
+@using WorkServices.Web.Features.JobAssignments.Models
+@using WorkServices.Web.Layout
+
+@inject JobAssignmentService JobAssignmentService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Assign Artisan | WorkServices</PageTitle>
+
+<div class="container-fluid p-4">
+
+    <h1>Assign Artisan</h1>
+
+    <p class="text-muted">
+        Assign an artisan to service request
+        <strong>@ServiceRequestId</strong>.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+
+            <EditForm Model="@model"
+                      OnValidSubmit="@AssignAsync">
+
+                <DataAnnotationsValidator />
+
+                <div class="mb-4">
+
+                    <label class="form-label">
+                        Artisan ID
+                    </label>
+
+                    <InputText @bind-Value="artisanIdText"
+                               class="form-control" />
+
+                    <div class="form-text">
+                        Enter the artisan's GUID.
+                    </div>
+
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary"
+                        disabled="@isSubmitting">
+
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2">
+                        </span>
+
+                        <span>Assigning...</span>
+                    }
+                    else
+                    {
+                        <span>Assign Artisan</span>
+                    }
+
+                </button>
+
+            </EditForm>
+
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public Guid ServiceRequestId { get; set; }
+
+    private readonly JobAssignmentRequest model = new();
+
+    private string artisanIdText = string.Empty;
+
+    private bool isSubmitting;
+
+    private string errorMessage = string.Empty;
+
+    private async Task AssignAsync()
+    {
+        errorMessage = string.Empty;
+
+        if (!Guid.TryParse(
+                artisanIdText,
+                out var artisanId))
+        {
+            errorMessage =
+                "Please provide a valid artisan ID.";
+
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            model.ServiceRequestId = ServiceRequestId;
+            model.ArtisanId = artisanId;
+
+            await JobAssignmentService.AssignAsync(model);
+
+            NavigationManager.NavigateTo(
+                $"/admin/service-request/{ServiceRequestId}");
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage =
+                "Unable to assign the artisan. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

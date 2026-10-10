@@ -1,0 +1,47 @@
+@using WorkServices.Web.Features.ServiceRequests.Models
+
+<span class="status-badge @GetCssClass()">
+    @GetLabel()
+</span>
+
+@code {
+
+    [Parameter]
+    public JobStatus Status { get; set; }
+
+    private string GetLabel()
+    {
+        return Status switch
+        {
+            JobStatus.Pending => "Pending",
+            JobStatus.Assigned => "Assigned",
+            JobStatus.QuoteSubmitted => "Quote Submitted",
+            JobStatus.QuoteApproved => "Quote Approved",
+            JobStatus.MaterialsPaid => "Materials Paid",
+            JobStatus.InProgress => "In Progress",
+            JobStatus.Completed => "Completed",
+            JobStatus.LabourPaid => "Labour Paid",
+            JobStatus.Reviewed => "Reviewed",
+            JobStatus.Cancelled => "Cancelled",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetCssClass()
+    {
+        return Status switch
+        {
+            JobStatus.Pending => "status-pending",
+            JobStatus.Assigned => "status-assigned",
+            JobStatus.QuoteSubmitted => "status-quote",
+            JobStatus.QuoteApproved => "status-approved",
+            JobStatus.MaterialsPaid => "status-paid",
+            JobStatus.InProgress => "status-progress",
+            JobStatus.Completed => "status-completed",
+            JobStatus.LabourPaid => "status-paid",
+            JobStatus.Reviewed => "status-reviewed",
+            JobStatus.Cancelled => "status-cancelled",
+            _ => "status-default"
+        };
+    }
+}

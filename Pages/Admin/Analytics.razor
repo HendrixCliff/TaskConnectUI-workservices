@@ -1,0 +1,98 @@
+@page "/admin/analytics"
+@attribute [Authorize(Roles = "Admin")]
+@inject ApiClient Api
+
+<PageTitle>Analytics</PageTitle>
+
+<div class="container py-4">
+    <h1>Platform analytics</h1>
+    <p class="text-muted">Summary of service requests on the platform.</p>
+
+    @if (Busy)
+    {
+        <p>Loading analytics...</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger">@Error</div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <p class="text-muted mb-1">Total requests</p>
+                    <h2>@Requests.Count</h2>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <p class="text-muted mb-1">Pending</p>
+                    <h2>@CountStatus(JobStatus.Pending)</h2>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <p class="text-muted mb-1">Completed</p>
+                    <h2>@CountStatus(JobStatus.Completed)</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <h2>Requests by status</h2>
+
+            @foreach (var group in Requests.GroupBy(r => r.Status)
+                .OrderByDescending(g => g.Count()))
+            {
+                <div class="mb-3" @key="group.Key">
+                    <div class="d-flex justify-content-between">
+                        <span>@group.Key</span>
+                        <strong>@group.Count()</strong>
+                    </div>
+
+                    <div class="progress" role="progressbar"
+                         aria-valuenow="@Percentage(group.Count())"
+                         aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar"
+                             style="width:@($"{Percentage(group.Count())}%")">
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ServiceRequestDto> Requests = [];
+    private bool Busy = true;
+    private string? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Requests = await Api.GetAsync<List<ServiceRequestDto>>(
+                "admin/service-requests") ?? [];
+        }
+        catch
+        {
+            Error = "Unable to load analytics.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private int CountStatus(JobStatus status) =>
+        Requests.Count(r => r.Status == status);
+
+    private int Percentage(int count) =>
+        Requests.Count == 0
+            ? 0
+            : (int)Math.Round(count * 100.0 / Requests.Count);
+}

@@ -1,0 +1,71 @@
+@using WorkServices.Web.Auth
+
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="page-container">
+
+    @if (AuthService.User is null)
+    {
+        <div class="card">
+
+            <h1>Sign in required</h1>
+
+            <p>
+                Please sign in to access this page.
+            </p>
+
+            <button
+                type="button"
+                class="btn btn-primary"
+                @onclick="GoToLogin">
+                Sign in
+            </button>
+
+        </div>
+    }
+    else
+    {
+        <div class="card">
+
+            <h1>Access denied</h1>
+
+            <p>
+                Your account does not have permission
+                to access this page.
+            </p>
+
+            <button
+                type="button"
+                class="btn btn-primary"
+                @onclick="GoHome">
+                Go to dashboard
+            </button>
+
+        </div>
+    }
+
+</div>
+
+@code {
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private void GoHome()
+    {
+        var role = AuthService.User?.Role;
+
+        var destination = role switch
+        {
+            "Customer" => "/customer",
+            "Artisan" => "/artisan",
+            "Admin" => "/admin",
+            _ => "/"
+        };
+
+        Navigation.NavigateTo(destination);
+    }
+}

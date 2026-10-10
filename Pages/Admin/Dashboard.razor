@@ -1,0 +1,82 @@
+@page "/admin"
+
+@attribute [Authorize(Roles = "Admin")]
+
+@layout AdminLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Layout
+
+<PageTitle>Admin Dashboard | WorkServices</PageTitle>
+
+<div class="container-fluid p-4">
+
+    <div class="mb-4">
+        <h1>Administration</h1>
+
+        <p class="text-muted">
+            Manage WorkServices operations.
+        </p>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">
+                        Pending Requests
+                    </div>
+
+                    <div class="fs-2 fw-bold">
+                        0
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">
+                        Assigned
+                    </div>
+
+                    <div class="fs-2 fw-bold">
+                        0
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">
+                        In Progress
+                    </div>
+
+                    <div class="fs-2 fw-bold">
+                        0
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">
+                        Completed
+                    </div>
+
+                    <div class="fs-2 fw-bold">
+                        0
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>

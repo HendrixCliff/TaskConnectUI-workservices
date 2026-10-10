@@ -1,0 +1,141 @@
+@page "/admin/service-requests"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.ServiceRequests
+@using WorkServices.Web.Features.ServiceRequests.Models
+@using WorkServices.Web.Auth
+@using WorkServices.Web.Layout
+@inject ServiceRequestService ServiceRequestService
+@inject WorkServicesAuthenticationStateProvider AuthenticationStateProvider 
+
+<PageTitle>My Jobs | WorkServices</PageTitle>
+
+<div class="container-fluid p-4">
+
+    <div class="mb-4">
+        <h1>My Jobs</h1>
+
+        <p class="text-muted">
+            Jobs assigned to you.
+        </p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+    else if (jobs.Count == 0)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center p-5">
+
+                <h3>No jobs assigned</h3>
+
+                <p class="text-muted">
+                    New assignments will appear here.
+                </p>
+
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+
+            @foreach (var job in jobs)
+            {
+                <div class="col-md-6 col-xl-4">
+
+                    <div class="card border-0 shadow-sm h-100">
+
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between mb-3">
+
+                                <strong>
+                                    Service #@job.Id
+                                </strong>
+
+                                <StatusBadge
+                                    Status="@job.Status" />
+
+                            </div>
+
+                            <p>
+                                @job.Description
+                            </p>
+
+                            <div class="text-muted small mb-3">
+                                @job.Address
+                            </div>
+
+                            <a href="/artisan/job/@job.Id"
+                               class="btn btn-outline-primary w-100">
+                                View Job
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+
+</div>
+
+@code {
+    private List<ServiceRequestDto> jobs = [];
+
+    private bool isLoading = true;
+
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var state =
+                await AuthenticationStateProvider
+                    .GetAuthenticationStateAsync();
+
+            var userId =
+                state.User.FindFirst(
+                    System.Security.Claims.ClaimTypes
+                        .NameIdentifier)?.Value;
+
+            if (!Guid.TryParse(userId, out var artisanId))
+            {
+                errorMessage =
+                    "Unable to determine your artisan account.";
+
+                return;
+            }
+
+            jobs =
+                await ServiceRequestService
+                    .GetArtisanRequestsAsync(artisanId);
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage =
+                "Unable to load your jobs.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

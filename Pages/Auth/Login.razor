@@ -1,0 +1,122 @@
+@page "/login"
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using WorkServices.Web.Auth
+@using System.Security.Claims
+@using WorkServices.Web.Models.Auth
+
+@inject AuthService AuthService
+@inject WorkServicesAuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Login</PageTitle>
+
+<div class="auth-page">
+
+    <div class="auth-card">
+
+        <h1>Welcome back</h1>
+
+        <p>Sign in to your WorkServices account.</p>
+
+        <EditForm Model="@Model"
+                  OnValidSubmit="@LoginAsync">
+
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="email">
+                    Email
+                </label>
+
+                <InputText id="email"
+                           class="form-control"
+                           @bind-Value="Model.Email" />
+
+                <ValidationMessage
+                    For="@(() => Model.Email)" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">
+                    Password
+                </label>
+
+                <InputText id="password"
+                           type="password"
+                           class="form-control"
+                           @bind-Value="Model.Password" />
+
+                <ValidationMessage
+                    For="@(() => Model.Password)" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="alert alert-error">
+                    @ErrorMessage
+                </div>
+            }
+
+            <button type="submit"
+                    class="btn btn-primary"
+                    disabled="@IsBusy">
+
+                @(IsBusy ? "Signing in..." : "Sign in")
+
+            </button>
+
+        </EditForm>
+
+    </div>
+
+</div>
+
+@code {
+    private LoginRequest Model { get; } = new();
+
+    private bool IsBusy;
+
+    private string? ErrorMessage;
+
+    private async Task LoginAsync()
+    {
+        ErrorMessage = null;
+        IsBusy = true;
+
+        try
+        {
+            await AuthService.LoginAsync(Model);
+
+            var authenticationState =
+                await AuthenticationStateProvider
+                    .GetAuthenticationStateAsync();
+
+            var user = authenticationState.User;
+
+            var role =
+                user.FindFirst(ClaimTypes.Role)?.Value;
+
+            var destination = role switch
+            {
+                "Customer" => "/customer",
+                "Artisan" => "/artisan",
+                "Admin" => "/admin",
+                _ => "/"
+            };
+
+            Navigation.NavigateTo(
+                destination,
+                forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+}

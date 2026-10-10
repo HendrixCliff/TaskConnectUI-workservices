@@ -1,0 +1,108 @@
+@page "/customer/quotes/{ServiceRequestId:guid}"
+@attribute [Authorize(Roles = "Customer")]
+@inject ApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>Quotes</PageTitle>
+
+<div class="container py-4">
+    <h1>Quotes</h1>
+
+    @if (Busy)
+    {
+        <p>Loading quotes...</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger">@Error</div>
+    }
+    else if (Quotes.Count == 0)
+    {
+        <div class="alert alert-info">No quotes have been submitted yet.</div>
+    }
+    else
+    {
+        @foreach (var quote in Quotes)
+        {
+            <div class="card p-4 mb-3" @key="quote.Id">
+                <h2>Quote @quote.Id.ToString()[..8]</h2>
+                <p>@quote.Description</p>
+
+                <dl class="row">
+                    <dt class="col-sm-4">Labour</dt>
+                    <dd class="col-sm-8">@quote.LabourCost.ToString("C")</dd>
+
+                    <dt class="col-sm-4">Materials</dt>
+                    <dd class="col-sm-8">@quote.MaterialsCost.ToString("C")</dd>
+
+                    <dt class="col-sm-4">Total</dt>
+                    <dd class="col-sm-8 fw-bold">@quote.TotalCost.ToString("C")</dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">@(quote.Status ?? "Pending")</dd>
+                </dl>
+
+                <button class="btn btn-primary align-self-start"
+                        disabled="@IsApproved(quote)"
+                        @onclick="() => ApproveAsync(quote.Id)">
+                    @(IsApproved(quote) ? "Approved" : "Approve quote")
+                </button>
+            </div>
+        }
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <div class="alert alert-info">@Message</div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid ServiceRequestId { get; set; }
+
+    private List<QuoteDto> Quotes = [];
+    private bool Busy = true;
+    private string? Error;
+    private string? Message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Busy = true;
+        Error = null;
+
+        try
+        {
+            Quotes = await Api.GetAsync<List<QuoteDto>>(
+                $"quotes/service-request/{ServiceRequestId}") ?? [];
+        }
+        catch
+        {
+            Error = "Unable to load quotes.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private static bool IsApproved(QuoteDto quote) =>
+        string.Equals(quote.Status, "Approved",
+            StringComparison.OrdinalIgnoreCase);
+
+    private async Task ApproveAsync(Guid quoteId)
+    {
+        Message = null;
+
+        try
+        {
+            await Api.PostAsync($"quotes/{quoteId}/approve");
+            Message = "Quote approved successfully.";
+            await OnParametersSetAsync();
+        }
+        catch
+        {
+            Message = "Unable to approve this quote.";
+        }
+    }
+}
+

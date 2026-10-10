@@ -1,0 +1,116 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Services
+@using WorkServices.Web.Models
+
+@page "/customer/review/{ServiceRequestId:guid}"
+@attribute [Authorize(Roles = "Customer")]
+@inject ApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>Review Artisan</PageTitle>
+
+<div class="container py-4">
+    <div class="card mx-auto p-4" style="max-width: 640px">
+        <h1>Review your artisan</h1>
+
+        <EditForm Model="Model" OnValidSubmit="SubmitAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Rating</label>
+                <InputSelect class="form-select" @bind-Value="Model.Rating">
+                    <option value="5">5 - Excellent</option>
+                    <option value="4">4 - Very good</option>
+                    <option value="3">3 - Good</option>
+                    <option value="2">2 - Fair</option>
+                    <option value="1">1 - Poor</option>
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Comment</label>
+                <InputTextArea class="form-control" rows="5"
+                               @bind-Value="Model.Comment" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <div class="alert alert-info">@Message</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <div class="alert alert-danger">@Error</div>
+            }
+
+            <button class="btn btn-primary" disabled="@Busy">
+                @(Busy ? "Submitting..." : "Submit review")
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid ServiceRequestId { get; set; }
+
+    private readonly CreateReviewRequest Model = new();
+    private bool Busy;
+    private string? Message;
+    private string? Error;
+
+    protected override void OnParametersSet()
+{
+    Model.ServiceRequestId = ServiceRequestId;
+
+    var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+    var query = ParseQuery(uri.Query);
+
+    if (query.TryGetValue("artisanId", out var artisanId)
+        && Guid.TryParse(artisanId, out var id))
+    {
+        Model.ArtisanId = id;
+    }
+}
+
+private static Dictionary<string, string> ParseQuery(string queryString)
+{
+    var result = new Dictionary<string, string>(
+        StringComparer.OrdinalIgnoreCase);
+
+    foreach (var part in queryString.TrimStart('?').Split(
+                 '&', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var separator = part.IndexOf('=');
+        var key = separator < 0 ? part : part[..separator];
+        var value = separator < 0 ? string.Empty : part[(separator + 1)..];
+
+        result[Uri.UnescapeDataString(key.Replace("+", " "))] =
+            Uri.UnescapeDataString(value.Replace("+", " "));
+    }
+
+    return result;
+}
+
+    private async Task SubmitAsync()
+    {
+        Busy = true;
+        Message = Error = null;
+
+        try
+        {
+            await Api.PostAsync("reviews", Model);
+            Message = "Thank you. Your review has been submitted.";
+        }
+        catch
+        {
+            Error = "Unable to submit the review. Confirm the request is completed and try again.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}
+

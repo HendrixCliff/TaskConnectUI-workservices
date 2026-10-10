@@ -1,0 +1,152 @@
+@page "/customer/requests"
+
+@attribute [Authorize(Roles = "Customer")]
+
+@layout CustomerLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.ServiceRequests
+@using WorkServices.Web.Features.ServiceRequests.Models
+@using WorkServices.Web.Layout;
+@inject ServiceRequestService ServiceRequestService
+
+<PageTitle>My Requests | WorkServices</PageTitle>
+
+<div class="container-fluid p-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h1>My Service Requests</h1>
+
+            <p class="text-muted">
+                Track all your service requests.
+            </p>
+        </div>
+
+        <a href="/customer/request/new"
+           class="btn btn-primary">
+            + New Request
+        </a>
+
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border text-primary">
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+    else if (requests.Count == 0)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center p-5">
+
+                <h3>No service requests yet</h3>
+
+                <p class="text-muted">
+                    Tell us what you need help with.
+                </p>
+
+                <a href="/customer/request/new"
+                   class="btn btn-primary">
+                    Request a Service
+                </a>
+
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+
+            <div class="table-responsive">
+
+                <table class="table align-middle mb-0">
+
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Description</th>
+                            <th>Address</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var request in requests)
+                        {
+                            <tr>
+
+                                <td>
+                                    @request.ServiceType
+                                </td>
+
+                                <td>
+                                    @request.Description
+                                </td>
+
+                                <td>
+                                    @request.Address
+                                </td>
+
+                                <td>
+                                    <StatusBadge
+                                        Status="@request.Status" />
+                                </td>
+
+                                <td>
+                                    <a href="/customer/request/@request.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+    }
+
+</div>
+
+@code {
+    private List<ServiceRequestDto> requests = [];
+
+    private bool isLoading = true;
+
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            requests =
+                await ServiceRequestService.GetMyAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage =
+                "Unable to load your service requests.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

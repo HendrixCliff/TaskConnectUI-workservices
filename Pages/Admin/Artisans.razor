@@ -1,0 +1,105 @@
+@page "/admin/artisans"
+@attribute [Authorize(Roles = "Admin")]
+
+@inject ApiClient Api
+
+<PageTitle>Manage Artisans</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Artisans</h1>
+            <p class="text-muted">Manage registered service providers.</p>
+        </div>
+
+        <button class="btn btn-outline-primary"
+                @onclick="LoadArtisansAsync"
+                disabled="@Busy">
+            Refresh
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger">@Error</div>
+    }
+
+    @if (Busy)
+    {
+        <p>Loading artisans...</p>
+    }
+    else
+    {
+        <div class="card p-3 mb-3">
+            <strong>Total artisans: @_artisans.Count</strong>
+        </div>
+
+        @if (_artisans.Count == 0)
+        {
+            <div class="alert alert-info">
+                No artisans were found.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var artisan in _artisans)
+                        {
+                            <tr @key="artisan.Id">
+                                <td>@artisan.FullName</td>
+                                <td>@artisan.Email</td>
+                                <td>@(artisan.PhoneNumber ?? "—")</td>
+                                <td>@(artisan.ServiceType ?? "—")</td>
+                                <td>@(artisan.Status ?? "Unknown")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<AdminUserDto> _artisans = [];
+    private bool Busy = true;
+    private string? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadArtisansAsync();
+    }
+
+    private async Task LoadArtisansAsync()
+    {
+        Busy = true;
+        Error = null;
+
+        try
+        {
+            var result = await Api.GetAsync<List<AdminUserDto>>(
+                "admin/artisans");
+
+            _artisans = result ?? [];
+        }
+        catch (Exception)
+        {
+            _artisans = [];
+            Error = "Unable to load artisans. Check the API endpoint and your administrator permissions.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }}

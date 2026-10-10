@@ -1,0 +1,158 @@
+```razor
+@page "/artisan/jobs/{Id:guid}"
+@attribute [Authorize(Roles = "Artisan")]
+
+@inject ApiClient Api
+
+<PageTitle>Job Details</PageTitle>
+
+<div class="container py-4">
+    <h1>Job details</h1>
+
+    @if (Busy)
+    {
+        <p>Loading job...</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger">@Error</div>
+    }
+    else if (Request is not null)
+    {
+        <div class="card p-4">
+            <h2>@Request.Description</h2>
+            <StatusBadge Status="Request.Status" />
+
+            <dl class="row mt-3">
+                <dt class="col-sm-3">Address</dt>
+                <dd class="col-sm-9">@Request.Address</dd>
+
+                <dt class="col-sm-3">Customer</dt>
+                <dd class="col-sm-9">@(Request.CustomerName ?? "Customer")</dd>
+
+                <dt class="col-sm-3">Created</dt>
+                <dd class="col-sm-9">
+                    @Request.CreatedAt.ToLocalTime().ToString("g")
+                </dd>
+            </dl>
+
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <button type="button"
+                        class="btn btn-success"
+                        disabled="@Busy"
+                        @onclick="AcceptAsync">
+                    Accept
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-danger"
+                        disabled="@Busy"
+                        @onclick="RejectAsync">
+                    Reject
+                </button>
+
+                <button type="button"
+                        class="btn btn-primary"
+                        disabled="@Busy"
+                        @onclick="StartAsync">
+                    Start job
+                </button>
+
+                <button type="button"
+                        class="btn btn-dark"
+                        disabled="@Busy"
+                        @onclick="CompleteAsync">
+                    Complete job
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <div class="alert alert-info mt-3">@Message</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ServiceRequestDto? Request;
+    private bool Busy = true;
+    private string? Error;
+    private string? Message;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        Busy = true;
+        Error = null;
+
+        try
+        {
+            Request = await Api.GetAsync<ServiceRequestDto>(
+                $"service-requests/{Id}");
+
+            if (Request is null)
+            {
+                Error = "Job not found.";
+            }
+        }
+        catch (Exception)
+        {
+            Request = null;
+            Error = "Unable to load this job.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private Task AcceptAsync() => UpdateAssignmentAsync("accept");
+
+    private Task RejectAsync() => UpdateAssignmentAsync("reject");
+
+    private Task StartAsync() => UpdateAssignmentAsync("start");
+
+    private Task CompleteAsync() => UpdateAssignmentAsync("complete");
+
+    private async Task UpdateAssignmentAsync(string action)
+    {
+        if (Request is null || Busy)
+        {
+            return;
+        }
+
+        Busy = true;
+        Error = null;
+        Message = null;
+
+        try
+        {
+            await Api.PostAsync(
+                $"job-assignments/{Request.Id}/{action}");
+
+            Message = $"Job action '{action}' completed successfully.";
+        }
+        catch (Exception)
+        {
+            Error = $"Unable to {action} this job. Verify the assignment ID and that this action is permitted.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+
+        if (Error is null)
+        {
+            await LoadAsync();
+        }
+    }
+}
+```

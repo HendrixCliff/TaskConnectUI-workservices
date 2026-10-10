@@ -1,0 +1,68 @@
+@page "/artisan"
+
+@attribute [Authorize(Roles = "Artisan")]
+
+@layout ArtisanLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Layout
+
+<PageTitle>Artisan Dashboard | WorkServices</PageTitle>
+
+<div class="container-fluid p-4">
+
+    <div class="mb-4">
+        <h1>Artisan Dashboard</h1>
+
+        <p class="text-muted">
+            Manage your assigned jobs and work.
+        </p>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">
+                        Assigned Jobs
+                    </div>
+
+                    <div class="fs-2 fw-bold">
+                        0
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">
+                        In Progress
+                    </div>
+
+                    <div class="fs-2 fw-bold">
+                        0
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted">
+                        Completed
+                    </div>
+
+                    <div class="fs-2 fw-bold">
+                        0
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
