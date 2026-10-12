@@ -1,0 +1,12 @@
+
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && bash /tmp/dotnet-install.sh --channel 9.0 && export PATH=\"$HOME/.dotnet:$PATH\" && dotnet publish WorkServices.Web.csproj -c Release -o publish",
+  "outputDirectory": "publish/wwwroot",
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
