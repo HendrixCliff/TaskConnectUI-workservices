@@ -1,45 +1,210 @@
-@page "/"
 
+@page "/"
+@layout PublicLayout
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject NavigationManager NavigationManager
 
+<PageTitle>WorkServices | Find Trusted Local Artisans</PageTitle>
+
 <AuthorizeView>
     <Authorized>
-        <div class="container py-5">
+        <div class="ws-redirect">
+            <div class="ws-spinner" aria-hidden="true"></div>
             <h1>Welcome to WorkServices</h1>
-
-            <p class="text-muted">
-                Redirecting you to your dashboard...
-            </p>
+            <p>Taking you to your dashboard...</p>
         </div>
     </Authorized>
 
     <NotAuthorized>
-        <div class="container py-5">
+        <main class="ws-home">
+            <section class="ws-hero">
+                <div class="ws-hero-content">
+                    <span class="ws-eyebrow">
+                        YOUR HOME. YOUR WORK. OUR EXPERTS.
+                    </span>
 
-            <div class="text-center">
-                <h1>WorkServices</h1>
+                    <h1>
+                        Find the right hands for
+                        <span>every job.</span>
+                    </h1>
 
-                <p class="lead">
-                    Connect with trusted artisans for your
-                    home and office service needs.
-                </p>
+                    <p class="ws-hero-description">
+                        From plumbing emergencies to fresh coats of paint,
+                        WorkServices helps you connect with skilled artisans
+                        for your home and office needs.
+                    </p>
 
-                <div class="d-flex justify-content-center gap-2">
-                    <a href="/login"
-                       class="btn btn-primary">
-                        Login
-                    </a>
+                    <div class="ws-hero-actions">
+                        <a class="ws-button ws-button-primary"
+                           href="/register/customer">
+                            Find a Service
+                            <span aria-hidden="true">→</span>
+                        </a>
 
-                    <a href="/register/customer"
-                       class="btn btn-outline-primary">
-                        Get Started
+                        <a class="ws-button ws-button-secondary"
+                           href="/login">
+                            Sign In
+                        </a>
+                    </div>
+
+                    <div class="ws-trust-points">
+                        <span><span class="ws-check">✓</span> Convenient booking</span>
+                        <span><span class="ws-check">✓</span> Clear job tracking</span>
+                        <span><span class="ws-check">✓</span> Simple communication</span>
+                    </div>
+                </div>
+
+                <div class="ws-hero-art" aria-label="Home maintenance services illustration">
+                    <div class="ws-art-circle"></div>
+
+                    <div class="ws-art-card ws-art-card-main">
+                        <div class="ws-art-icon">🏠</div>
+                        <span class="ws-art-caption">Your home, taken care of</span>
+                        <strong>One place for your service needs.</strong>
+                    </div>
+
+                    <div class="ws-art-card ws-art-card-top">
+                        <span class="ws-floating-icon">🔧</span>
+                        <div>
+                            <strong>Repairs</strong>
+                            <small>Get things working again</small>
+                        </div>
+                    </div>
+
+                    <div class="ws-art-card ws-art-card-bottom">
+                        <span class="ws-floating-icon">🎨</span>
+                        <div>
+                            <strong>Improvements</strong>
+                            <small>Make your space feel new</small>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ws-services" id="services">
+                <div class="ws-section-heading">
+                    <div>
+                        <span class="ws-eyebrow">WHAT WE CAN HELP WITH</span>
+                        <h2>Services for everyday life</h2>
+                        <p>
+                            Find help for the jobs that keep your home
+                            and workspace running smoothly.
+                        </p>
+                    </div>
+
+                    <a href="/register/customer" class="ws-text-link">
+                        Explore services <span aria-hidden="true">→</span>
                     </a>
                 </div>
-            </div>
 
-        </div>
+                <div class="ws-service-grid">
+                    <article class="ws-service-card">
+                        <div class="ws-service-icon ws-icon-blue">🚰</div>
+                        <h3>Plumbing</h3>
+                        <p>Leaks, blocked drains, faulty taps, and more.</p>
+                    </article>
+
+                    <article class="ws-service-card">
+                        <div class="ws-service-icon ws-icon-yellow">⚡</div>
+                        <h3>Electrical</h3>
+                        <p>Electrical repairs and everyday installations.</p>
+                    </article>
+
+                    <article class="ws-service-card">
+                        <div class="ws-service-icon ws-icon-orange">🪚</div>
+                        <h3>Carpentry</h3>
+                        <p>Woodwork, fittings, furniture, and repairs.</p>
+                    </article>
+
+                    <article class="ws-service-card">
+                        <div class="ws-service-icon ws-icon-green">🧹</div>
+                        <h3>Cleaning</h3>
+                        <p>Get help keeping your space fresh and tidy.</p>
+                    </article>
+
+                    <article class="ws-service-card">
+                        <div class="ws-service-icon ws-icon-purple">👕</div>
+                        <h3>Laundry</h3>
+                        <p>Make laundry day easier and more convenient.</p>
+                    </article>
+
+                    <article class="ws-service-card">
+                        <div class="ws-service-icon ws-icon-pink">🎨</div>
+                        <h3>Painting</h3>
+                        <p>Refresh your walls and transform your space.</p>
+                    </article>
+
+                    <article class="ws-service-card">
+                        <div class="ws-service-icon ws-icon-teal">🛠️</div>
+                        <h3>Generator Repair</h3>
+                        <p>Get assistance with generator maintenance and repairs.</p>
+                    </article>
+                </div>
+
+                <p class="ws-service-note">
+                    Service availability depends on your location and the
+                    artisans available on the platform.
+                </p>
+            </section>
+
+            <section class="ws-how">
+                <div class="ws-how-heading">
+                    <span class="ws-eyebrow">SIMPLE FROM START TO FINISH</span>
+                    <h2>Getting help is easy</h2>
+                    <p>Three simple steps to get your job moving.</p>
+                </div>
+
+                <div class="ws-steps">
+                    <article class="ws-step">
+                        <span class="ws-step-number">01</span>
+                        <h3>Describe your job</h3>
+                        <p>
+                            Choose a service, explain what needs doing,
+                            and provide the service address.
+                        </p>
+                    </article>
+
+                    <article class="ws-step">
+                        <span class="ws-step-number">02</span>
+                        <h3>Track your request</h3>
+                        <p>
+                            Follow your request as it progresses through
+                            assignment and quotation.
+                        </p>
+                    </article>
+
+                    <article class="ws-step">
+                        <span class="ws-step-number">03</span>
+                        <h3>Get the work done</h3>
+                        <p>
+                            Keep track of your job and its progress
+                            through your customer dashboard.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="ws-cta">
+                <div>
+                    <span class="ws-eyebrow">LET'S GET THAT JOB DONE</span>
+                    <h2>Your next service request starts here.</h2>
+                    <p>Create an account and tell us what you need.</p>
+                </div>
+
+                <a class="ws-button ws-button-light"
+                   href="/register/customer">
+                    Get Started <span aria-hidden="true">→</span>
+                </a>
+            </section>
+
+            <footer class="ws-footer">
+                <a href="/" class="ws-footer-brand">WorkServices</a>
+                <p>Connecting people with the services they need.</p>
+                <span>© @DateTime.Now.Year WorkServices</span>
+            </footer>
+        </main>
     </NotAuthorized>
 </AuthorizeView>
 
@@ -47,59 +212,35 @@
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
-    protected override async Task OnAfterRenderAsync(
-        bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender ||
-            AuthenticationStateTask is null)
+        if (!firstRender || AuthenticationStateTask is null)
         {
             return;
         }
 
-       var state =
-    await AuthenticationStateTask;
+        var state = await AuthenticationStateTask;
+        var user = state.User;
 
-    if (state.User.Identity?.IsAuthenticated != true)
-    {
-        return;
-    }
-
-        var role =
-            state.User.FindFirst(
-                System.Security.Claims.ClaimTypes.Role)?.Value;
-
-        if (string.Equals(
-                role,
-                "Admin",
-                StringComparison.OrdinalIgnoreCase))
+        if (user.Identity?.IsAuthenticated != true)
         {
-            NavigationManager.NavigateTo(
-                "/admin",
-                replace: true);
-
             return;
         }
 
-        if (string.Equals(
-                role,
-                "Artisan",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            NavigationManager.NavigateTo(
-                "/artisan",
-                replace: true);
+        var role = user.FindFirst(ClaimTypes.Role)?.Value
+                   ?? user.FindFirst("role")?.Value;
 
-            return;
-        }
-
-        if (string.Equals(
-                role,
-                "Customer",
-                StringComparison.OrdinalIgnoreCase))
+        var destination = role?.ToUpperInvariant() switch
         {
-            NavigationManager.NavigateTo(
-                "/customer",
-                replace: true);
+            "ADMIN" => "/admin",
+            "ARTISAN" => "/artisan",
+            "CUSTOMER" => "/customer",
+            _ => null
+        };
+
+        if (destination is not null)
+        {
+            NavigationManager.NavigateTo(destination, replace: true);
         }
     }
 }

@@ -1,116 +1,125 @@
-@page "/customer/payment/{PaymentId:guid}"
+
+@page "/customer/payment/{ServiceRequestId:guid}"
+
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.Payments
+@using WorkServices.Web.Features.Payments.Models
+
 @attribute [Authorize(Roles = "Customer")]
 
-@inject ApiClient Api
+@inject PaymentService PaymentService
 @inject NavigationManager Navigation
 
 <PageTitle>Payment</PageTitle>
 
 <div class="container py-4">
     <h1>Payment</h1>
+    <p class="text-muted">
+        Review the payments associated with this service request.
+    </p>
 
     @if (Busy)
     {
-        <p>Loading payment details...</p>
+        <p><span class="spinner-border spinner-border-sm me-2"></span>Loading payment details...</p>
     }
     else if (!string.IsNullOrWhiteSpace(Error))
     {
-        <div class="alert alert-danger">@Error</div>
+        <div class="alert alert-danger" role="alert">@Error</div>
     }
-    else if (_payment is not null)
+
+    @if (!string.IsNullOrWhiteSpace(Message))
     {
-        <div class="card p-4">
-            <h2>Payment details</h2>
+        <div class="alert alert-info" role="status">@Message</div>
+    }
 
-            <dl class="row mt-3">
-                <dt class="col-sm-4">Payment reference</dt>
-                <dd class="col-sm-8">
-                    @(_payment.Reference ?? _payment.Id.ToString())
-                </dd>
+    @if (!Busy && _payments.Count == 0 && string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-secondary">
+            No payments were found for this service request.
+        </div>
+    }
 
-                <dt class="col-sm-4">Amount</dt>
-                <dd class="col-sm-8">
-                    @_payment.Amount.ToString("N2")
-                </dd>
-
-                <dt class="col-sm-4">Status</dt>
-                <dd class="col-sm-8">
-                    @(_payment.Status ?? "Unknown")
-                </dd>
-            </dl>
-
-            @if (!string.IsNullOrWhiteSpace(Message))
+    @if (_payments.Count > 0)
+    {
+        <div class="row g-3">
+            @foreach (var payment in _payments)
             {
-                <div class="alert alert-info">@Message</div>
+                <div class="col-12" @key="payment.Id">
+                    <div class="card p-4">
+                        <h2 class="h5">Payment details</h2>
+
+                        <dl class="row mt-3 mb-3">
+                            <dt class="col-sm-4">Payment ID</dt>
+                            <dd class="col-sm-8">@payment.Id</dd>
+
+                            <dt class="col-sm-4">Reference</dt>
+                            <dd class="col-sm-8">
+                                @(payment.Reference ?? "Not assigned")
+                            </dd>
+
+                            <dt class="col-sm-4">Amount</dt>
+                            <dd class="col-sm-8">
+                                @payment.Amount.ToString("N2")
+                            </dd>
+
+                            <dt class="col-sm-4">Status</dt>
+                            <dd class="col-sm-8">
+                                @(payment.Status ?? "Unknown")
+                            </dd>
+                        </dl>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    disabled="@Busy"
+                                    @onclick="() => InitializePaymentAsync(payment.Id)">
+                                Continue to payment
+                            </button>
+
+                            @if (!string.IsNullOrWhiteSpace(payment.Reference))
+                            {
+                                <button type="button"
+                                        class="btn btn-outline-secondary"
+                                        disabled="@Busy"
+                                        @onclick="() => VerifyPaymentAsync(payment.Reference!)">
+                                    Verify payment
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
             }
-
-            <div class="d-flex flex-wrap gap-2">
-                @if (!string.IsNullOrWhiteSpace(_payment.AuthorizationUrl))
-                {
-                    <button type="button"
-                            class="btn btn-primary"
-                            @onclick="OpenPaymentPage">
-                        Continue to payment
-                    </button>
-                }
-
-                <button type="button"
-                        class="btn btn-outline-secondary"
-                        disabled="@Busy"
-                        @onclick="VerifyAsync">
-                    Verify payment
-                </button>
-            </div>
         </div>
     }
 </div>
 
 @code {
     [Parameter]
-    public Guid PaymentId { get; set; }
+    public Guid ServiceRequestId { get; set; }
 
-    private PaymentDto? _payment;
-    private bool Busy = true;
+    private List<PaymentDto> _payments = [];
+    private bool Busy;
     private string? Error;
     private string? Message;
 
     protected override async Task OnParametersSetAsync()
     {
-        await LoadPaymentAsync();
+        await LoadPaymentsAsync();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender &&
-            string.Equals(
-                GetQueryParameter("status"),
-                "success",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            await VerifyAsync();
-        }
-    }
-
-    private async Task LoadPaymentAsync()
+    private async Task LoadPaymentsAsync()
     {
         Busy = true;
         Error = null;
-        Message = null;
 
         try
         {
-            _payment = await Api.GetAsync<PaymentDto>(
-                $"payments/{PaymentId}");
-
-            if (_payment is null)
-            {
-                Error = "Payment not found.";
-            }
+            _payments = await PaymentService.GetByServiceRequestAsync(
+                ServiceRequestId);
         }
-        catch (Exception)
+        catch (HttpRequestException)
         {
-            _payment = null;
-            Error = "Unable to load this payment. Verify the payment endpoint and payment ID.";
+            Error = "Unable to load payments for this service request.";
         }
         finally
         {
@@ -118,10 +127,44 @@
         }
     }
 
-    private async Task VerifyAsync()
+    private async Task InitializePaymentAsync(Guid paymentId)
     {
-        if (Busy)
+        Busy = true;
+        Error = null;
+        Message = null;
+
+        try
         {
+            var result = await PaymentService.InitializeAsync(paymentId);
+
+            if (result is null ||
+                !Uri.TryCreate(
+                    result.AuthorizationUrl,
+                    UriKind.Absolute,
+                    out var paymentUri) ||
+                paymentUri.Scheme != Uri.UriSchemeHttps)
+            {
+                Error = "The payment provider did not return a valid HTTPS payment URL.";
+                return;
+            }
+
+            Navigation.NavigateTo(paymentUri.AbsoluteUri, forceLoad: true);
+        }
+        catch (HttpRequestException)
+        {
+            Error = "Unable to initialize payment. Please try again.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private async Task VerifyPaymentAsync(string reference)
+    {
+        if (string.IsNullOrWhiteSpace(reference))
+        {
+            Error = "A payment reference is required.";
             return;
         }
 
@@ -131,63 +174,18 @@
 
         try
         {
-            _payment = await Api.GetAsync<PaymentDto>(
-                $"payments/{PaymentId}/verify");
+            var result = await PaymentService.VerifyAsync(reference);
 
-            Message = "Payment verification completed.";
+            Message = result?.Message ?? "Payment verification completed.";
+            await LoadPaymentsAsync();
         }
-        catch (Exception)
+        catch (HttpRequestException)
         {
-            Error = "Unable to verify the payment. Please try again.";
+            Error = "Unable to verify payment. Please try again.";
         }
         finally
         {
             Busy = false;
         }
     }
-
-    private void OpenPaymentPage()
-    {
-        var url = _payment?.AuthorizationUrl;
-
-        if (Uri.TryCreate(url, UriKind.Absolute, out var parsed) &&
-            (parsed.Scheme == Uri.UriSchemeHttps ||
-             parsed.Scheme == Uri.UriSchemeHttp))
-        {
-            Navigation.NavigateTo(parsed.AbsoluteUri, forceLoad: true);
-        }
-        else
-        {
-            Error = "The payment provider did not return a valid payment URL.";
-        }
-    }
-
-    private string? GetQueryParameter(string name)
-    {
-        var query = Navigation.ToAbsoluteUri(Navigation.Uri).Query
-            .TrimStart('?');
-
-        foreach (var pair in query.Split(
-            '&',
-            StringSplitOptions.RemoveEmptyEntries))
-        {
-            var parts = pair.Split('=', 2);
-
-            var key = Uri.UnescapeDataString(
-                parts[0].Replace("+", " "));
-
-            if (!string.Equals(
-                    key,
-                    name,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var value = parts.Length > 1 ? parts[1] : string.Empty;
-
-            return Uri.UnescapeDataString(value.Replace("+", " "));
-        }
-
-        return null;
-        }}
+}

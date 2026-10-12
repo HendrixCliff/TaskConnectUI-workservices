@@ -1,0 +1,29 @@
+
+@inherits LayoutComponentBase
+
+<div class="ws-public-layout">
+    <header class="ws-navbar">
+        <div class="ws-navbar-inner">
+            <a class="ws-navbar-brand" href="/">
+                <span class="ws-brand-mark">W</span>
+                <span>WorkServices</span>
+            </a>
+
+            <nav class="ws-navbar-links" aria-label="Main navigation">
+                <a href="/#services">Services</a>
+                <a href="/#how-it-works">How it works</a>
+            </nav>
+
+            <div class="ws-navbar-actions">
+                <a class="ws-navbar-login" href="/login">Log in</a>
+                <a class="ws-navbar-cta" href="/register/customer">
+                    Get Started
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="ws-public-body">
+        @Body
+    </div>
+</div>

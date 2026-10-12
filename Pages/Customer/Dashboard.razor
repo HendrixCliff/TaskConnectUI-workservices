@@ -1,75 +1,230 @@
 @page "/customer"
-
 @attribute [Authorize(Roles = "Customer")]
-
 @layout CustomerLayout
 
 @using Microsoft.AspNetCore.Authorization
-@using WorkServices.Web.Layout;
+@using WorkServices.Web.Features.ServiceRequests
+@using WorkServices.Web.Features.ServiceRequests.Models
+@using WorkServices.Web.Layout
+
+@inject ServiceRequestService ServiceRequestService
+@inject NavigationManager Navigation
 
 <PageTitle>Customer Dashboard | WorkServices</PageTitle>
 
 <div class="container-fluid p-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h1>Customer Dashboard</h1>
-
             <p class="text-muted mb-0">
                 Manage your service requests and jobs.
             </p>
         </div>
 
-        <a href="/customer/request/new"
-           class="btn btn-primary">
-            + Request a Service
-        </a>
+        <NavLink href="/customer/request/new" class="btn btn-primary">
+        + Request a Service
+    </NavLink>
     </div>
 
-    <div class="row g-4">
-
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Active Requests
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading your dashboard...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+            <button class="btn btn-sm btn-outline-danger ms-3"
+                    @onclick="LoadDashboardAsync">
+                Try again
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Active Requests</div>
+                        <div class="fs-2 fw-bold">@ActiveRequests</div>
+                        <small class="text-muted">
+                            Requests not yet completed or cancelled
+                        </small>
                     </div>
+                </div>
+            </div>
 
-                    <div class="fs-2 fw-bold">
-                        0
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Awaiting Action</div>
+                        <div class="fs-2 fw-bold">@AwaitingAction</div>
+                        <small class="text-muted">
+                            Requests awaiting the next step
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Completed</div>
+                        <div class="fs-2 fw-bold">@CompletedRequests</div>
+                        <small class="text-muted">
+                            Successfully completed jobs
+                        </small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Awaiting Action
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                        <h2 class="h4 mb-1">Recent Requests</h2>
+                        <p class="text-muted mb-0">
+                            Review the latest activity on your jobs.
+                        </p>
                     </div>
 
-                    <div class="fs-2 fw-bold">
-                        0
-                    </div>
+                    <a href="/customer/requests"
+                       class="btn btn-outline-primary">
+                        View All Requests
+                    </a>
                 </div>
+
+                @if (requests.Count == 0)
+                {
+                    <div class="text-center py-5">
+                        <h3 class="h5">No service requests yet</h3>
+                        <p class="text-muted">
+                            Tell us what work you need help with.
+                        </p>
+                        <a href="/customer/request/new"
+                           class="btn btn-primary">
+                            Create Your First Request
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var request in RecentRequests)
+                                {
+                                    <tr @key="request.Id">
+                                        <td>@request.ServiceType</td>
+                                        <td>
+                                            <span class="text-break">
+                                                @request.Description
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @request.Status
+                                        </td>
+                                        <td>
+                                            @request.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+                                        </td>
+                                        <td>
+                                            <a href="@($"/customer/request/{request.Id}")"
+                                               class="btn btn-sm btn-outline-primary">
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         </div>
-
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Completed
-                    </div>
-
-                    <div class="fs-2 fw-bold">
-                        0
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
+    }
 </div>
+
+@code {
+    private List<ServiceRequestDto> requests = [];
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    private int ActiveRequests =>
+        requests.Count(request =>
+            !IsStatus(request, "Completed") &&
+            !IsStatus(request, "Reviewed") &&
+            !IsStatus(request, "Cancelled"));
+
+    private int AwaitingAction =>
+        requests.Count(request =>
+            IsStatus(request, "Pending") ||
+            IsStatus(request, "QuoteSubmitted") ||
+            IsStatus(request, "Completed"));
+
+    private int CompletedRequests =>
+        requests.Count(request =>
+            IsStatus(request, "Completed") ||
+            IsStatus(request, "Reviewed"));
+
+    private IEnumerable<ServiceRequestDto> RecentRequests =>
+        requests
+            .OrderByDescending(request => request.CreatedAt)
+            .Take(5);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var result = await ServiceRequestService.GetMyAsync();
+            requests = result ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage =
+                "Unable to load your requests. Please check your connection and try again.";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            errorMessage =
+                "Your session may have expired. Please sign in again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static bool IsStatus(
+        ServiceRequestDto request,
+        string expectedStatus)
+    {
+        return string.Equals(
+            request.Status.ToString(),
+            expectedStatus,
+            StringComparison.OrdinalIgnoreCase);
+    }
+}

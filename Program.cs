@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
+using WorkServices.Web.Features.ServiceRequests;
+using WorkServices.Web.Features.JobAssignments;
+using WorkServices.Web.Features.Payments;
+using WorkServices.Web.Features.Quotes;
+using WorkServices.Web.Features.Reviews;
 using WorkServices.Web;
 using WorkServices.Web.Auth;
 using WorkServices.Web.Services;
@@ -40,6 +45,15 @@ builder.Services.AddAuthorizationCore();
 
 builder.Services.AddScoped<ApiClient>();
 builder.Services.AddScoped<AuthService>();
+
+
+
+builder.Services.AddScoped<ServiceRequestService>();
+builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<QuoteService>();
+builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<JobAssignmentService>();
+
 
 builder.Services.AddScoped<WorkServicesAuthenticationStateProvider>();
 

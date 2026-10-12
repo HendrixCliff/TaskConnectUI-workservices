@@ -1,81 +1,64 @@
-using System.Net.Http.Json;
 using WorkServices.Web.Features.ServiceRequests.Models;
+using WorkServices.Web.Services;
 
 namespace WorkServices.Web.Features.ServiceRequests;
 
 public sealed class ServiceRequestService
 {
-    private readonly HttpClient _httpClient;
+    private readonly ApiClient _api;
 
-    public ServiceRequestService(
-        HttpClient httpClient)
+    public ServiceRequestService(ApiClient api)
     {
-        _httpClient = httpClient;
+        _api = api;
     }
 
-    public async Task<ServiceRequestDto?> CreateAsync(
+    public async Task CreateAsync(
         CreateServiceRequestRequest request,
         CancellationToken cancellationToken = default)
     {
-        using var response =
-            await _httpClient.PostAsJsonAsync(
-                "service-requests",
-                request,
-                cancellationToken);
-
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content
-            .ReadFromJsonAsync<ServiceRequestDto>(
-                cancellationToken);
+        await _api.PostAsync(
+            "service-requests",
+            request,
+            cancellationToken);
     }
 
     public async Task<List<ServiceRequestDto>> GetMyAsync(
         CancellationToken cancellationToken = default)
     {
-        var result =
-            await _httpClient.GetFromJsonAsync<
-                List<ServiceRequestDto>>(
-                "service-requests/my",
-                cancellationToken);
+        var result = await _api.GetAsync<List<ServiceRequestDto>>(
+            "service-requests/my",
+            cancellationToken);
 
         return result ?? [];
     }
 
-    public async Task<ServiceRequestDto?> GetByIdAsync(
+    public Task<ServiceRequestDto?> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<
-            ServiceRequestDto>(
+        return _api.GetAsync<ServiceRequestDto>(
             $"service-requests/{id}",
             cancellationToken);
     }
 
-    public async Task<List<ServiceRequestDto>>
-        GetCustomerRequestsAsync(
-            Guid customerId,
-            CancellationToken cancellationToken = default)
+    public async Task<List<ServiceRequestDto>> GetCustomerRequestsAsync(
+        Guid customerId,
+        CancellationToken cancellationToken = default)
     {
-        var result =
-            await _httpClient.GetFromJsonAsync<
-                List<ServiceRequestDto>>(
-                $"service-requests/customer/{customerId}",
-                cancellationToken);
+        var result = await _api.GetAsync<List<ServiceRequestDto>>(
+            $"service-requests/customer/{customerId}",
+            cancellationToken);
 
         return result ?? [];
     }
 
-    public async Task<List<ServiceRequestDto>>
-        GetArtisanRequestsAsync(
-            Guid artisanId,
-            CancellationToken cancellationToken = default)
+    public async Task<List<ServiceRequestDto>> GetArtisanRequestsAsync(
+        Guid artisanId,
+        CancellationToken cancellationToken = default)
     {
-        var result =
-            await _httpClient.GetFromJsonAsync<
-                List<ServiceRequestDto>>(
-                $"service-requests/artisan/{artisanId}",
-                cancellationToken);
+        var result = await _api.GetAsync<List<ServiceRequestDto>>(
+            $"service-requests/artisan/{artisanId}",
+            cancellationToken);
 
         return result ?? [];
     }

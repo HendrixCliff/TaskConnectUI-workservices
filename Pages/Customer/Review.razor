@@ -1,7 +1,9 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Authorization
 @using WorkServices.Web.Services
-@using WorkServices.Web.Models
+@using WorkServices.Web.Features.Reviews
+@using WorkServices.Web.Features.Reviews.Models
+@inject ReviewService ReviewService
 
 @page "/customer/review/{ServiceRequestId:guid}"
 @attribute [Authorize(Roles = "Customer")]

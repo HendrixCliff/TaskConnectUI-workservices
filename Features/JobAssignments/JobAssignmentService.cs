@@ -14,7 +14,7 @@ public sealed class JobAssignmentService
     }
 
     public async Task AssignAsync(
-        JobAssignmentRequest request,
+        CreateJobAssignmentRequest request,
         CancellationToken cancellationToken = default)
     {
         using var response =

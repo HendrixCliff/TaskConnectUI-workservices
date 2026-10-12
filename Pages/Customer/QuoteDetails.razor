@@ -1,3 +1,7 @@
+@using WorkServices.Web.Features.Quotes
+@using WorkServices.Web.Features.Quotes.Models
+@inject QuoteService QuoteService
+
 @page "/customer/quotes/{ServiceRequestId:guid}"
 @attribute [Authorize(Roles = "Customer")]
 @inject ApiClient Api
