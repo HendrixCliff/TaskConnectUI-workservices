@@ -1,82 +1,247 @@
+
 @page "/admin"
-
 @attribute [Authorize(Roles = "Admin")]
-
 @layout AdminLayout
 
 @using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.Admin
+@using WorkServices.Web.Features.Admin.Models
 @using WorkServices.Web.Layout
+
+@inject AdminService AdminService
 
 <PageTitle>Admin Dashboard | WorkServices</PageTitle>
 
 <div class="container-fluid p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1>Administration</h1>
+            <p class="text-muted mb-0">
+                Manage WorkServices operations.
+            </p>
+        </div>
 
-    <div class="mb-4">
-        <h1>Administration</h1>
-
-        <p class="text-muted">
-            Manage WorkServices operations.
-        </p>
+        <button class="btn btn-outline-primary"
+                @onclick="LoadDashboardAsync"
+                disabled="@isLoading">
+            Refresh
+        </button>
     </div>
 
-    <div class="row g-4">
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">
+                Loading administration data...
+            </p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
 
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Pending Requests
+            <button class="btn btn-sm btn-outline-danger ms-3"
+                    @onclick="LoadDashboardAsync">
+                Try again
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Pending Requests</div>
+                        <div class="fs-2 fw-bold">@PendingCount</div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="fs-2 fw-bold">
-                        0
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Assigned</div>
+                        <div class="fs-2 fw-bold">@AssignedCount</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">In Progress</div>
+                        <div class="fs-2 fw-bold">@InProgressCount</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Completed</div>
+                        <div class="fs-2 fw-bold">@CompletedCount</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Assigned
-                    </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h4 mb-3">Service Requests</h2>
 
-                    <div class="fs-2 fw-bold">
-                        0
+                @if (requests.Count == 0)
+                {
+                    <div class="text-center py-4">
+                        <p class="mb-0 text-muted">
+                            No service requests found.
+                        </p>
                     </div>
-                </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Service</th>
+                                    <th>Address</th>
+                                    <th>Action</th>
+                                    <th>Estimated Cost</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var request in requests)
+                                {
+                                    <tr @key="request.Id">
+                                        <td>@request.CustomerName</td>
+                                        <td>@FormatServiceType(request.ServiceType)</td>
+                                        <td>@request.Address</td>
+                                        <td>@request.EstimatedCost.ToString("N2")</td>
+                                        <td>
+                                        @if (string.Equals(
+                                            request.Status,
+                                            "Pending",
+                                            StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <a class="btn btn-sm btn-primary"
+                                            href="@($"/admin/service-request/{request.Id}/assign")">
+                                                Assign Artisan
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                        <td>
+                                            <span class="@GetStatusCssClass(request.Status)">
+                                                @FormatStatus(request.Status)
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        In Progress
-                    </div>
-
-                    <div class="fs-2 fw-bold">
-                        0
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Completed
-                    </div>
-
-                    <div class="fs-2 fw-bold">
-                        0
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
+    }
 </div>
+
+@code {
+    private List<ServiceRequestForAssignmentDto> requests = [];
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    private int PendingCount =>
+        CountByStatus("Pending");
+
+    private int AssignedCount =>
+        CountByStatus("Assigned");
+
+    private int InProgressCount =>
+        CountByStatus("InProgress");
+
+    private int CompletedCount =>
+        CountByStatus("Completed");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            requests = await AdminService.GetServiceRequestsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage =
+                "Unable to load service requests. Check your connection and try again.";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            errorMessage =
+                "You are not authorized to access this data. Please sign in again with an admin account.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private int CountByStatus(string status)
+    {
+        return requests.Count(request =>
+            string.Equals(
+                request.Status,
+                status,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string FormatServiceType(string serviceType)
+    {
+        return serviceType switch
+        {
+            "GeneratorRepair" => "Generator Repair",
+            _ => serviceType
+        };
+    }
+
+    private static string FormatStatus(string status)
+    {
+        return status switch
+        {
+            "InProgress" => "In Progress",
+            _ => status
+        };
+    }
+
+    private static string GetStatusCssClass(string status)
+    {
+        return status switch
+        {
+            "Pending" => "badge bg-warning text-dark",
+            "Assigned" => "badge bg-info text-dark",
+            "InProgress" => "badge bg-primary",
+            "Completed" => "badge bg-success",
+            "Cancelled" => "badge bg-secondary",
+            "Rejected" => "badge bg-danger",
+            "Reviewed" => "badge bg-primary",
+            _ => "badge bg-secondary"
+        };
+    }
+}

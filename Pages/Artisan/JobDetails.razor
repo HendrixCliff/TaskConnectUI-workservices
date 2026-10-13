@@ -1,75 +1,124 @@
-```razor
-@page "/artisan/jobs/{Id:guid}"
+
+@page "/artisan/job/{Id:guid}"
+
 @attribute [Authorize(Roles = "Artisan")]
+@layout ArtisanLayout
 
-@inject ApiClient Api
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.JobAssignments
+@using WorkServices.Web.Features.JobAssignments.Models
+@using WorkServices.Web.Layout
 
-<PageTitle>Job Details</PageTitle>
+@inject JobAssignmentService JobAssignmentService
+
+<PageTitle>Job Details | WorkServices</PageTitle>
 
 <div class="container py-4">
-    <h1>Job details</h1>
+    <div class="mb-4">
+        <a href="/artisan/jobs" class="text-decoration-none">
+            &larr; Back to My Jobs
+        </a>
+        <h1 class="mt-3">Job Details</h1>
+    </div>
 
     @if (Busy)
     {
-        <p>Loading job...</p>
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading job...</span>
+            </div>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(Error))
     {
-        <div class="alert alert-danger">@Error</div>
+        <div class="alert alert-danger" role="alert">
+            @Error
+        </div>
     }
     else if (Request is not null)
     {
-        <div class="card p-4">
-            <h2>@Request.Description</h2>
-            <StatusBadge Status="Request.Status" />
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <h2 class="h4">
+                        @(string.IsNullOrWhiteSpace(Request.ServiceType)
+                            ? "Service Request"
+                            : Request.ServiceType)
+                    </h2>
 
-            <dl class="row mt-3">
-                <dt class="col-sm-3">Address</dt>
-                <dd class="col-sm-9">@Request.Address</dd>
+                    <span class="badge bg-secondary">
+                        @DisplayStatus(Request)
+                    </span>
+                </div>
 
-                <dt class="col-sm-3">Customer</dt>
-                <dd class="col-sm-9">@(Request.CustomerName ?? "Customer")</dd>
+                <p>@Request.Description</p>
 
-                <dt class="col-sm-3">Created</dt>
-                <dd class="col-sm-9">
-                    @Request.CreatedAt.ToLocalTime().ToString("g")
-                </dd>
-            </dl>
+                <dl class="row mt-4">
+                    <dt class="col-sm-3">Address</dt>
+                    <dd class="col-sm-9">@Request.Address</dd>
 
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <button type="button"
-                        class="btn btn-success"
-                        disabled="@Busy"
-                        @onclick="AcceptAsync">
-                    Accept
-                </button>
+                    <dt class="col-sm-3">Customer</dt>
+                    <dd class="col-sm-9">
+                        @(string.IsNullOrWhiteSpace(Request.CustomerName)
+                            ? "Customer details unavailable"
+                            : Request.CustomerName)
+                    </dd>
 
-                <button type="button"
-                        class="btn btn-outline-danger"
-                        disabled="@Busy"
-                        @onclick="RejectAsync">
-                    Reject
-                </button>
+                    <dt class="col-sm-3">Estimated cost</dt>
+                    <dd class="col-sm-9">
+                        @if (Request.EstimatedCost > 0)
+                        {
+                            @Request.EstimatedCost.ToString("N2")
+                        }
+                        else
+                        {
+                            <span>Not provided</span>
+                        }
+                    </dd>
 
-                <button type="button"
-                        class="btn btn-primary"
-                        disabled="@Busy"
-                        @onclick="StartAsync">
-                    Start job
-                </button>
+                    <dt class="col-sm-3">Acceptance</dt>
+                    <dd class="col-sm-9">
+                        @(Request.Accepted ? "Accepted" : "Awaiting acceptance")
+                    </dd>
+                </dl>
 
-                <button type="button"
-                        class="btn btn-dark"
-                        disabled="@Busy"
-                        @onclick="CompleteAsync">
-                    Complete job
-                </button>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="button"
+                            class="btn btn-success"
+                            disabled="@(Busy || Request.Accepted)"
+                            @onclick="AcceptAsync">
+                        Accept
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-danger"
+                            disabled="@(Busy || Request.Accepted)"
+                            @onclick="RejectAsync">
+                        Reject
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-primary"
+                            disabled="@Busy"
+                            @onclick="StartAsync">
+                        Start Job
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-dark"
+                            disabled="@Busy"
+                            @onclick="CompleteAsync">
+                        Complete Job
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="alert alert-success mt-3" role="status">
+                        @Message
+                    </div>
+                }
             </div>
-
-            @if (!string.IsNullOrWhiteSpace(Message))
-            {
-                <div class="alert alert-info mt-3">@Message</div>
-            }
         </div>
     }
 </div>
@@ -78,7 +127,7 @@
     [Parameter]
     public Guid Id { get; set; }
 
-    private ServiceRequestDto? Request;
+    private ArtisanJobDto? Request;
     private bool Busy = true;
     private string? Error;
     private string? Message;
@@ -95,18 +144,24 @@
 
         try
         {
-            Request = await Api.GetAsync<ServiceRequestDto>(
-                $"service-requests/{Id}");
+            var jobs = await JobAssignmentService.GetMyJobsAsync();
+
+            Request = jobs.FirstOrDefault(job => job.AssignmentId == Id);
 
             if (Request is null)
             {
-                Error = "Job not found.";
+                Error = "This assignment was not found in your jobs.";
             }
         }
-        catch (Exception)
+        catch (HttpRequestException)
         {
             Request = null;
             Error = "Unable to load this job.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            Request = null;
+            Error = "The job response could not be read.";
         }
         finally
         {
@@ -114,13 +169,17 @@
         }
     }
 
-    private Task AcceptAsync() => UpdateAssignmentAsync("accept");
+    private async Task AcceptAsync() =>
+        await UpdateAssignmentAsync("accept");
 
-    private Task RejectAsync() => UpdateAssignmentAsync("reject");
+    private async Task RejectAsync() =>
+        await UpdateAssignmentAsync("reject");
 
-    private Task StartAsync() => UpdateAssignmentAsync("start");
+    private async Task StartAsync() =>
+        await UpdateAssignmentAsync("start");
 
-    private Task CompleteAsync() => UpdateAssignmentAsync("complete");
+    private async Task CompleteAsync() =>
+        await UpdateAssignmentAsync("complete");
 
     private async Task UpdateAssignmentAsync(string action)
     {
@@ -135,24 +194,44 @@
 
         try
         {
-            await Api.PostAsync(
-                $"job-assignments/{Request.Id}/{action}");
+            switch (action)
+            {
+                case "accept":
+                    await JobAssignmentService.AcceptAsync(Request.AssignmentId);
+                    break;
 
-            Message = $"Job action '{action}' completed successfully.";
+                case "reject":
+                    await JobAssignmentService.RejectAsync(Request.AssignmentId);
+                    break;
+
+                case "start":
+                    await JobAssignmentService.StartAsync(Request.AssignmentId);
+                    break;
+
+                case "complete":
+                    await JobAssignmentService.CompleteAsync(Request.AssignmentId);
+                    break;
+
+                default:
+                    throw new InvalidOperationException("Unsupported job action.");
+            }
+
+            Message = $"Job {action} action completed successfully.";
+
+            await LoadAsync();
         }
-        catch (Exception)
+        catch (HttpRequestException)
         {
-            Error = $"Unable to {action} this job. Verify the assignment ID and that this action is permitted.";
+            Error = $"Unable to {action} this job. Check the assignment status and permissions.";
         }
         finally
         {
             Busy = false;
         }
-
-        if (Error is null)
-        {
-            await LoadAsync();
-        }
     }
+
+    private static string DisplayStatus(ArtisanJobDto job) =>
+        !string.IsNullOrWhiteSpace(job.Status)
+            ? job.Status
+            : job.Accepted ? "Accepted" : "Awaiting acceptance";
 }
-```

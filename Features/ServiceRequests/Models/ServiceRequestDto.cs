@@ -10,7 +10,7 @@ public sealed class ServiceRequestDto
 
     public Guid? ArtisanId { get; set; }
 
-    public int ServiceType { get; set; }
+    public string ServiceType { get; set; } = string.Empty;
 
     public string Description { get; set; } = string.Empty;
 

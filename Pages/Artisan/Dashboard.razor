@@ -1,68 +1,189 @@
+
 @page "/artisan"
 
 @attribute [Authorize(Roles = "Artisan")]
-
 @layout ArtisanLayout
 
 @using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.JobAssignments
+@using WorkServices.Web.Features.JobAssignments.Models
 @using WorkServices.Web.Layout
+
+@inject JobAssignmentService JobAssignmentService
 
 <PageTitle>Artisan Dashboard | WorkServices</PageTitle>
 
 <div class="container-fluid p-4">
-
     <div class="mb-4">
         <h1>Artisan Dashboard</h1>
-
         <p class="text-muted">
             Manage your assigned jobs and work.
         </p>
     </div>
 
-    <div class="row g-4">
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading dashboard...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
 
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Assigned Jobs
+            <button class="btn btn-sm btn-outline-danger ms-2"
+                    @onclick="LoadJobsAsync">
+                Retry
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Assigned Jobs</div>
+                        <div class="fs-2 fw-bold">@jobs.Count</div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="fs-2 fw-bold">
-                        0
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">In Progress</div>
+                        <div class="fs-2 fw-bold">@InProgressCount</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted">Completed</div>
+                        <div class="fs-2 fw-bold">@CompletedCount</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        In Progress
-                    </div>
-
-                    <div class="fs-2 fw-bold">
-                        0
-                    </div>
-                </div>
-            </div>
+        <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
+            <h2 class="h4 mb-0">Recent Jobs</h2>
+            <a href="/artisan/jobs" class="btn btn-outline-primary">
+                View All Jobs
+            </a>
         </div>
 
-        <div class="col-md-4">
+        @if (jobs.Count == 0)
+        {
             <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="text-muted">
-                        Completed
-                    </div>
-
-                    <div class="fs-2 fw-bold">
-                        0
-                    </div>
+                <div class="card-body text-center p-5">
+                    <h3>No jobs assigned yet</h3>
+                    <p class="text-muted mb-0">
+                        New assignments will appear here.
+                    </p>
                 </div>
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var job in jobs.Take(3))
+                {
+                    <div class="col-md-6 col-xl-4" @key="job.AssignmentId">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                    <strong>
+                                        @(string.IsNullOrWhiteSpace(job.ServiceType)
+                                            ? "Service"
+                                            : job.ServiceType)
+                                    </strong>
 
-    </div>
+                                    <span class="badge bg-secondary">
+                                        @DisplayStatus(job)
+                                    </span>
+                                </div>
 
+                                <p>
+                                    @(string.IsNullOrWhiteSpace(job.Description)
+                                        ? "No description provided."
+                                        : job.Description)
+                                </p>
+
+                                <div class="text-muted small mb-3">
+                                    @job.Address
+                                </div>
+
+                                <a href="@($"/artisan/job/{job.AssignmentId}")"
+                                   class="btn btn-outline-primary w-100">
+                                    View Job
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
 </div>
+
+@code {
+    private List<ArtisanJobDto> jobs = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private int InProgressCount =>
+        jobs.Count(job => IsStatus(job, "InProgress"));
+
+    private int CompletedCount =>
+        jobs.Count(job => IsStatus(job, "Completed"));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadJobsAsync();
+    }
+
+    private async Task LoadJobsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            jobs = await JobAssignmentService.GetMyJobsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Unable to load your dashboard jobs.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            errorMessage = "The jobs response could not be read.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static bool IsStatus(ArtisanJobDto job, string expected) =>
+        string.Equals(
+            job.Status?.Replace("_", "").Replace(" ", ""),
+            expected,
+            StringComparison.OrdinalIgnoreCase);
+
+    private static string DisplayStatus(ArtisanJobDto job)
+    {
+        if (!string.IsNullOrWhiteSpace(job.Status))
+        {
+            return job.Status;
+        }
+
+        return job.Accepted ? "Accepted" : "Awaiting acceptance";
+    }
+}

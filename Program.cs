@@ -7,6 +7,7 @@ using WorkServices.Web.Features.JobAssignments;
 using WorkServices.Web.Features.Payments;
 using WorkServices.Web.Features.Quotes;
 using WorkServices.Web.Features.Reviews;
+using WorkServices.Web.Features.Admin;
 using WorkServices.Web;
 using WorkServices.Web.Auth;
 using WorkServices.Web.Services;
@@ -47,7 +48,7 @@ builder.Services.AddScoped<ApiClient>();
 builder.Services.AddScoped<AuthService>();
 
 
-
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<ServiceRequestService>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<QuoteService>();

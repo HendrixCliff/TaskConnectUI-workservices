@@ -1,80 +1,81 @@
-using System.Net.Http.Json;
+
 using WorkServices.Web.Features.JobAssignments.Models;
+using WorkServices.Web.Services;
 
 namespace WorkServices.Web.Features.JobAssignments;
 
 public sealed class JobAssignmentService
 {
-    private readonly HttpClient _httpClient;
+    private readonly ApiClient _api;
 
-    public JobAssignmentService(
-        HttpClient httpClient)
+    public JobAssignmentService(ApiClient api)
     {
-        _httpClient = httpClient;
+        _api = api;
+    }
+
+    public async Task<List<ArtisanJobDto>> GetMyJobsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var jobs = await _api.GetAsync<List<ArtisanJobDto>>(
+            "artisans/jobs",
+            cancellationToken);
+
+        return jobs ?? [];
     }
 
     public async Task AssignAsync(
-        CreateJobAssignmentRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        using var response =
-            await _httpClient.PostAsJsonAsync(
-                "job-assignments",
-                request,
-                cancellationToken);
+    CreateJobAssignmentRequest request,
+    CancellationToken cancellationToken = default)
+{
+    await _api.PostAsync<object?>(
+        "job-assignments",
+        request,
+        cancellationToken);
+}
 
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task AcceptAsync(
+    public Task AcceptAsync(
         Guid assignmentId,
         CancellationToken cancellationToken = default)
     {
-        using var response =
-            await _httpClient.PostAsync(
-                $"job-assignments/{assignmentId}/accept",
-                null,
-                cancellationToken);
-
-        response.EnsureSuccessStatusCode();
+        return PostActionAsync(
+            $"job-assignments/{assignmentId}/accept",
+            cancellationToken);
     }
 
-    public async Task RejectAsync(
+    public Task RejectAsync(
         Guid assignmentId,
         CancellationToken cancellationToken = default)
     {
-        using var response =
-            await _httpClient.PostAsync(
-                $"job-assignments/{assignmentId}/reject",
-                null,
-                cancellationToken);
-
-        response.EnsureSuccessStatusCode();
+        return PostActionAsync(
+            $"job-assignments/{assignmentId}/reject",
+            cancellationToken);
     }
 
-    public async Task StartAsync(
-        Guid serviceRequestId,
+    public Task StartAsync(
+        Guid assignmentId,
         CancellationToken cancellationToken = default)
     {
-        using var response =
-            await _httpClient.PostAsync(
-                $"job-assignments/{serviceRequestId}/start",
-                null,
-                cancellationToken);
-
-        response.EnsureSuccessStatusCode();
+        return PostActionAsync(
+            $"job-assignments/{assignmentId}/start",
+            cancellationToken);
     }
 
-    public async Task CompleteAsync(
-        Guid serviceRequestId,
+    public Task CompleteAsync(
+        Guid assignmentId,
         CancellationToken cancellationToken = default)
     {
-        using var response =
-            await _httpClient.PostAsync(
-                $"job-assignments/{serviceRequestId}/complete",
-                null,
-                cancellationToken);
-
-        response.EnsureSuccessStatusCode();
+        return PostActionAsync(
+            $"job-assignments/{assignmentId}/complete",
+            cancellationToken);
     }
+
+   private async Task PostActionAsync(
+    string endpoint,
+    CancellationToken cancellationToken)
+{
+    await _api.PostAsync<object?>(
+        endpoint,
+        null,
+        cancellationToken);
+}
 }

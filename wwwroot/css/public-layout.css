@@ -1,0 +1,192 @@
+
+/* WorkServices public layout */
+
+.ws-public-layout {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    color: #0f172a;
+}
+
+.ws-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid #e2e8f0;
+    backdrop-filter: blur(12px);
+}
+
+.ws-navbar-inner {
+    width: min(100% - 2rem, 1200px);
+    min-height: 76px;
+    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.ws-navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: #0f172a;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.ws-navbar-brand:hover {
+    color: #2563eb;
+}
+
+.ws-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgb(37 99 235 / 20%);
+}
+
+.ws-navbar-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+}
+
+.ws-navbar-links a {
+    color: #475569;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.ws-navbar-links a:hover,
+.ws-navbar-links a:focus-visible {
+    color: #2563eb;
+}
+
+.ws-navbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    white-space: nowrap;
+}
+
+.ws-navbar-login {
+    color: #334155;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.ws-navbar-login:hover,
+.ws-navbar-login:focus-visible {
+    color: #2563eb;
+}
+
+.ws-navbar-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0.65rem 1.1rem;
+    border: 1px solid #2563eb;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 650;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ws-navbar-cta:hover,
+.ws-navbar-cta:focus-visible {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+}
+
+.ws-public-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.ws-navbar a:focus-visible {
+    outline: 3px solid rgb(37 99 235 / 35%);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    .ws-navbar-inner {
+        width: min(100% - 1.5rem, 1200px);
+        min-height: 68px;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding-block: 0.75rem;
+    }
+
+    .ws-navbar-brand {
+        font-size: 1.1rem;
+    }
+
+    .ws-brand-mark {
+        width: 36px;
+        height: 36px;
+    }
+
+    .ws-navbar-links {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        gap: 1.5rem;
+        padding-top: 0.25rem;
+    }
+
+    .ws-navbar-actions {
+        gap: 0.75rem;
+        margin-left: auto;
+    }
+
+    .ws-navbar-cta {
+        min-height: 38px;
+        padding: 0.55rem 0.8rem;
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .ws-navbar-inner {
+        width: calc(100% - 1rem);
+    }
+
+    .ws-navbar-brand {
+        gap: 0.4rem;
+        font-size: 1rem;
+    }
+
+    .ws-navbar-actions {
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .ws-navbar-links {
+        gap: 1rem;
+        font-size: 0.875rem;
+    }
+}

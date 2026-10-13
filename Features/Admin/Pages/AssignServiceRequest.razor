@@ -1,0 +1,214 @@
+
+@page "/admin/service-request/{ServiceRequestId:guid}/assign"
+
+@attribute [Authorize(Roles = "Admin")]
+
+@layout AdminLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.Admin.Models
+@using WorkServices.Web.Features.JobAssignments
+@using WorkServices.Web.Features.JobAssignments.Models
+@using WorkServices.Web.Layout
+@using WorkServices.Web.Services
+
+@inject ApiClient Api
+@inject JobAssignmentService JobAssignmentService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Assign Artisan | WorkServices</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Assign Artisan</h1>
+            <p class="text-muted mb-0">
+                Select an artisan for this service request.
+            </p>
+        </div>
+
+        <button type="button"
+                class="btn btn-outline-secondary"
+                @onclick="@(() => NavigationManager.NavigateTo("/admin"))">
+            Back to Dashboard
+        </button>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="text-muted small">Service request ID</div>
+            <code>@ServiceRequestId</code>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger" role="alert">
+            @Error
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Success))
+    {
+        <div class="alert alert-success" role="alert">
+            @Success
+        </div>
+    }
+
+    @if (IsLoading)
+    {
+        <p>
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Loading artisans...
+        </p>
+    }
+    else if (Artisans.Count == 0)
+    {
+        <div class="alert alert-warning">
+            No artisans were returned by the API. Check that the admin
+            artisans endpoint is working and that artisans are registered.
+        </div>
+
+        <button class="btn btn-outline-primary"
+                @onclick="LoadArtisansAsync"
+                disabled="@IsSubmitting">
+            Retry
+        </button>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <EditForm Model="@Model" OnValidSubmit="@AssignAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label for="artisan" class="form-label">
+                            Select artisan
+                        </label>
+
+                        <select id="artisan"
+                                class="form-select"
+                                @bind="ArtisanIdText"
+                                required>
+                            <option value="">-- Select an artisan --</option>
+
+                            @foreach (var artisan in Artisans)
+                            {
+                                <option @key="artisan.Id"
+                                        value="@artisan.Id.ToString()">
+                                    @artisan.FullName (@artisan.Email)
+                                    @if (!string.IsNullOrWhiteSpace(artisan.ServiceType))
+                                    {
+                                        @($" — {artisan.ServiceType}")
+                                    }
+                                </option>
+                            }
+                        </select>
+
+                        <div class="form-text">
+                            Choose the artisan who should receive this request.
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-primary"
+                            disabled="@IsSubmitting || string.IsNullOrWhiteSpace(ArtisanIdText)">
+                        @if (IsSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Assigning...</span>
+                        }
+                        else
+                        {
+                            <span>Assign Artisan</span>
+                        }
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid ServiceRequestId { get; set; }
+
+    private readonly CreateJobAssignmentRequest Model = new();
+
+    private List<AdminUserDto> Artisans = [];
+    private string ArtisanIdText = string.Empty;
+    private string? Error;
+    private string? Success;
+    private bool IsLoading = true;
+    private bool IsSubmitting;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadArtisansAsync();
+    }
+
+    private async Task LoadArtisansAsync()
+    {
+        IsLoading = true;
+        Error = null;
+
+        try
+        {
+            var result = await Api.GetAsync<List<AdminUserDto>>(
+                "admin/artisans");
+
+            Artisans = result ?? [];
+        }
+        catch (Exception ex)
+        {
+            Artisans = [];
+            Error = $"Unable to load artisans: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task AssignAsync()
+    {
+        Error = null;
+        Success = null;
+
+        if (!Guid.TryParse(ArtisanIdText, out var artisanId))
+        {
+            Error = "Please select a valid artisan.";
+            return;
+        }
+
+        if (ServiceRequestId == Guid.Empty)
+        {
+            Error = "The service request ID is invalid.";
+            return;
+        }
+
+        IsSubmitting = true;
+
+        try
+        {
+            Model.ServiceRequestId = ServiceRequestId;
+            Model.ArtisanId = artisanId;
+
+            await JobAssignmentService.AssignAsync(Model);
+
+            Success = "The artisan was assigned successfully.";
+
+            NavigationManager.NavigateTo("/admin");
+        }
+        catch (Exception ex)
+        {
+            Error = $"Assignment failed: {ex.Message}";
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+}

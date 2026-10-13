@@ -2,29 +2,21 @@
 @page "/artisan/jobs"
 
 @attribute [Authorize(Roles = "Artisan")]
-
 @layout ArtisanLayout
 
 @using Microsoft.AspNetCore.Authorization
-@using WorkServices.Web.Features.ServiceRequests
-@using WorkServices.Web.Features.ServiceRequests.Models
-@using WorkServices.Web.Services
-@using WorkServices.Web.Auth
+@using WorkServices.Web.Features.JobAssignments
+@using WorkServices.Web.Features.JobAssignments.Models
 @using WorkServices.Web.Layout
 
-@inject ServiceRequestService ServiceRequestService
-@inject WorkServicesAuthenticationStateProvider AuthenticationStateProvider
+@inject JobAssignmentService JobAssignmentService
 
 <PageTitle>My Jobs | WorkServices</PageTitle>
 
 <div class="container-fluid p-4">
-
     <div class="mb-4">
         <h1>My Jobs</h1>
-
-        <p class="text-muted">
-            Jobs assigned to you.
-        </p>
+        <p class="text-muted">Jobs assigned to you.</p>
     </div>
 
     @if (isLoading)
@@ -39,6 +31,10 @@
     {
         <div class="alert alert-danger">
             @errorMessage
+            <button class="btn btn-sm btn-outline-danger ms-2"
+                    @onclick="LoadJobsAsync">
+                Retry
+            </button>
         </div>
     }
     else if (jobs.Count == 0)
@@ -46,7 +42,6 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center p-5">
                 <h3>No jobs assigned</h3>
-
                 <p class="text-muted">
                     New assignments will appear here.
                 </p>
@@ -56,92 +51,95 @@
     else
     {
         <div class="row g-4">
-
             @foreach (var job in jobs)
             {
-                <div class="col-md-6 col-xl-4">
+                <div class="col-md-6 col-xl-4" @key="job.AssignmentId">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-body">
-
-                            <div class="d-flex justify-content-between mb-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
                                 <strong>
-                                    Service #@job.Id
+                                    @(string.IsNullOrWhiteSpace(job.ServiceType)
+                                        ? "Service"
+                                        : job.ServiceType)
                                 </strong>
 
-                                <StatusBadge Status="@job.Status" />
+                                <span class="badge bg-secondary">
+                                    @DisplayStatus(job)
+                                </span>
                             </div>
 
                             <p>
-                                @job.Description
+                                @(string.IsNullOrWhiteSpace(job.Description)
+                                    ? "No description provided."
+                                    : job.Description)
                             </p>
 
                             <div class="text-muted small mb-3">
-                                @job.Address
+                                <strong>Address:</strong> @job.Address
                             </div>
 
-                            <a href="/artisan/job/@job.Id"
+                            @if (!string.IsNullOrWhiteSpace(job.CustomerName))
+                            {
+                                <p class="small">
+                                    <strong>Customer:</strong> @job.CustomerName
+                                </p>
+                            }
+
+                            @if (job.EstimatedCost > 0)
+                            {
+                                <p class="small">
+                                    <strong>Estimated cost:</strong>
+                                    @job.EstimatedCost.ToString("N2")
+                                </p>
+                            }
+
+                            <a href="@($"/artisan/job/{job.AssignmentId}")"
                                class="btn btn-outline-primary w-100">
                                 View Job
                             </a>
-
                         </div>
                     </div>
                 </div>
             }
-
         </div>
     }
-
 </div>
 
 @code {
-    private List<ServiceRequestDto> jobs = [];
-
+    private List<ArtisanJobDto> jobs = [];
     private bool isLoading = true;
-
-    private string errorMessage = string.Empty;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadJobsAsync();
+    }
+
+    private async Task LoadJobsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
         try
         {
-            var state =
-                await AuthenticationStateProvider
-                    .GetAuthenticationStateAsync();
-
-            var userId =
-                state.User.FindFirst(
-                    System.Security.Claims.ClaimTypes.NameIdentifier)
-                ?.Value;
-
-            if (!Guid.TryParse(userId, out var artisanId))
-            {
-                errorMessage =
-                    "Unable to determine your artisan account.";
-
-                return;
-            }
-
-            jobs =
-                await ServiceRequestService
-                    .GetArtisanRequestsAsync(artisanId);
+            jobs = await JobAssignmentService.GetMyJobsAsync();
         }
         catch (HttpRequestException)
         {
-            errorMessage =
-                "Unable to load your jobs.";
+            errorMessage = "Unable to load your jobs.";
         }
-        catch (ApiException ex)
+        catch (System.Text.Json.JsonException)
         {
-            errorMessage =
-                string.IsNullOrWhiteSpace(ex.ResponseBody)
-                    ? "Unable to load your jobs."
-                    : ex.ResponseBody;
+            errorMessage = "The jobs response could not be read.";
         }
         finally
         {
             isLoading = false;
         }
     }
-}
 
+    private static string DisplayStatus(ArtisanJobDto job) =>
+        !string.IsNullOrWhiteSpace(job.Status)
+            ? job.Status
+            : job.Accepted ? "Accepted" : "Awaiting acceptance";
+}

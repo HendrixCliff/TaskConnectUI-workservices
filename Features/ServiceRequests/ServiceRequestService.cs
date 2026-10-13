@@ -1,3 +1,4 @@
+
 using WorkServices.Web.Features.ServiceRequests.Models;
 using WorkServices.Web.Services;
 
@@ -22,10 +23,11 @@ public sealed class ServiceRequestService
             cancellationToken);
     }
 
-    public async Task<List<ServiceRequestDto>> GetMyAsync(
+    
+    public async Task<List<CustomerRequestDto>> GetMyAsync(
         CancellationToken cancellationToken = default)
     {
-        var result = await _api.GetAsync<List<ServiceRequestDto>>(
+        var result = await _api.GetAsync<List<CustomerRequestDto>>(
             "service-requests/my",
             cancellationToken);
 

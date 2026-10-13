@@ -1,152 +1,102 @@
+
 @page "/customer/requests"
-
-@attribute [Authorize(Roles = "Customer")]
-
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Customer")]
 @layout CustomerLayout
 
-@using Microsoft.AspNetCore.Authorization
 @using WorkServices.Web.Features.ServiceRequests
 @using WorkServices.Web.Features.ServiceRequests.Models
-@using WorkServices.Web.Layout;
+@using WorkServices.Web.Layout
+
 @inject ServiceRequestService ServiceRequestService
 
 <PageTitle>My Requests | WorkServices</PageTitle>
 
-<div class="container-fluid p-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-
-        <div>
-            <h1>My Service Requests</h1>
-
-            <p class="text-muted">
-                Track all your service requests.
-            </p>
-        </div>
-
-        <a href="/customer/request/new"
-           class="btn btn-primary">
-            + New Request
-        </a>
-
-    </div>
+<div class="container py-4">
+    <h2 class="mb-4">My Job Requests</h2>
 
     @if (isLoading)
     {
-        <div class="d-flex justify-content-center p-5">
-            <div class="spinner-border text-primary">
-            </div>
-        </div>
+        <p>Loading your requests...</p>
     }
     else if (!string.IsNullOrWhiteSpace(errorMessage))
     {
-        <div class="alert alert-danger">
-            @errorMessage
-        </div>
+        <div class="alert alert-danger">@errorMessage</div>
     }
     else if (requests.Count == 0)
     {
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center p-5">
-
-                <h3>No service requests yet</h3>
-
-                <p class="text-muted">
-                    Tell us what you need help with.
-                </p>
-
-                <a href="/customer/request/new"
-                   class="btn btn-primary">
-                    Request a Service
-                </a>
-
-            </div>
+        <div class="alert alert-info">
+            No job requests were found for your account.
         </div>
     }
     else
     {
-        <div class="card border-0 shadow-sm">
+        <p>Requests loaded: @requests.Count</p>
 
-            <div class="table-responsive">
-
-                <table class="table align-middle mb-0">
-
-                    <thead>
-                        <tr>
-                            <th>Service</th>
-                            <th>Description</th>
-                            <th>Address</th>
-                            <th>Status</th>
-                            <th></th>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Address</th>
+                        <th>Status</th>
+                        <th>Request ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in requests)
+                    {
+                        <tr @key="request.Id">
+                            <td>@request.ServiceType</td>
+                            <td>@request.Address</td>
+                            <td>
+                                <span class="@GetStatusClass(request.Status)">
+                                    @request.Status
+                                </span>
+                            </td>
+                            <td>
+                                <small>@request.Id</small>
+                            </td>
                         </tr>
-                    </thead>
-
-                    <tbody>
-
-                        @foreach (var request in requests)
-                        {
-                            <tr>
-
-                                <td>
-                                    @request.ServiceType
-                                </td>
-
-                                <td>
-                                    @request.Description
-                                </td>
-
-                                <td>
-                                    @request.Address
-                                </td>
-
-                                <td>
-                                    <StatusBadge
-                                        Status="@request.Status" />
-                                </td>
-
-                                <td>
-                                    <a href="/customer/request/@request.Id"
-                                       class="btn btn-sm btn-outline-primary">
-                                        View
-                                    </a>
-                                </td>
-
-                            </tr>
-                        }
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
+                    }
+                </tbody>
+            </table>
         </div>
     }
-
 </div>
 
 @code {
-    private List<ServiceRequestDto> requests = [];
-
+    private List<CustomerRequestDto> requests = [];
     private bool isLoading = true;
-
-    private string errorMessage = string.Empty;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            requests =
-                await ServiceRequestService.GetMyAsync();
+            requests = await ServiceRequestService.GetMyAsync();
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
-            errorMessage =
-                "Unable to load your service requests.";
+            errorMessage = $"Unable to load requests: {ex.Message}";
         }
         finally
         {
             isLoading = false;
         }
+    }
+
+    private static string GetStatusClass(string status)
+    {
+        return status switch
+        {
+            "Pending" => "badge bg-warning text-dark",
+            "Assigned" => "badge bg-info text-dark",
+            "Reviewed" => "badge bg-primary",
+            "InProgress" => "badge bg-primary",
+            "Completed" => "badge bg-success",
+            "Cancelled" => "badge bg-secondary",
+            "Rejected" => "badge bg-danger",
+            _ => "badge bg-secondary"
+        };
     }
 }

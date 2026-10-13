@@ -1,0 +1,13 @@
+
+namespace WorkServices.Web.Features.ServiceRequests.Models;
+
+public sealed class CustomerRequestDto
+{
+    public Guid Id { get; set; }
+
+    public string Address { get; set; } = string.Empty;
+
+    public string ServiceType { get; set; } = string.Empty;
+
+    public string Status { get; set; } = string.Empty;
+}
