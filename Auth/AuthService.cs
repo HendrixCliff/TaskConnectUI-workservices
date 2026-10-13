@@ -53,33 +53,44 @@ public sealed class AuthService
     }
 
     public async Task LoginAsync(
-        LoginRequest request,
-        CancellationToken cancellationToken = default)
+    LoginRequest request,
+    CancellationToken cancellationToken = default)
+{
+    using var response = await _api.PostJsonAsync(
+        "auth/login",
+        request,
+        cancellationToken);
+
+    if (!response.IsSuccessStatusCode)
     {
-        using var response = await _api.PostJsonAsync(
-            "auth/login",
-            request,
+        var body = await response.Content.ReadAsStringAsync(
             cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync(
-                cancellationToken);
-
-            throw new ApiException(
-                response.StatusCode,
-                body);
-        }
-
-        _user = null;
-        _currentUserLoaded = false;
-
-        await GetCurrentUserAsync(cancellationToken);
-
-        AuthenticationStateChanged?.Invoke(
-            this,
-            EventArgs.Empty);
+        throw new ApiException(response.StatusCode, body);
     }
+
+    _user = null;
+    _currentUserLoaded = false;
+
+    var user = await _api.GetAsync<CurrentUser>(
+        "auth/me",
+        cancellationToken);
+
+    if (user is null)
+    {
+        _currentUserLoaded = true;
+
+        throw new InvalidOperationException(
+            "Login succeeded, but the API did not return the current user.");
+    }
+
+    _user = user;
+    _currentUserLoaded = true;
+
+    AuthenticationStateChanged?.Invoke(
+        this,
+        EventArgs.Empty);
+}
 
     public async Task RefreshAsync(
         CancellationToken cancellationToken = default)
