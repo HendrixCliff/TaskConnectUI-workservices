@@ -1,6 +1,11 @@
-using System.Net.Http.Json;
+
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using WorkServices.Web.Features.Payments.Models;
 using WorkServices.Web.Services;
+
 namespace WorkServices.Web.Features.Payments;
 
 public sealed class PaymentService
@@ -16,27 +21,55 @@ public sealed class PaymentService
         Guid serviceRequestId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _api.GetAsync<List<PaymentDto>>(
+        if (serviceRequestId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "A valid service request ID is required.",
+                nameof(serviceRequestId));
+        }
+
+        var result = await _api.GetAsync<PaymentListResponse>(
             $"payments/service-request/{serviceRequestId}",
             cancellationToken);
 
-        return result ?? [];
+        return result?.Items ?? [];
     }
 
-    public async Task<PaymentInitializationDto?> InitializeAsync(
-        Guid paymentId,
+    public async Task<string> InitializePaymentAsync(
+        Guid serviceRequestId,
+        PaymentType paymentType,
         CancellationToken cancellationToken = default)
     {
-        using var response = await _api.PostJsonAsync(
-            $"payments/{paymentId}/initialize",
+        if (serviceRequestId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "A valid service request ID is required.",
+                nameof(serviceRequestId));
+        }
+
+       if (!Enum.IsDefined(typeof(PaymentType), paymentType))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(paymentType),
+                paymentType,
+                "Unsupported payment type.");
+        }
+
+var endpoint =
+    $"payments/service-request/{serviceRequestId}/initialize" +
+    $"?paymentType={(int)paymentType}";
+        var result = await _api.PostAsync<object, PaymentInitializationDto>(
+            endpoint,
             new { },
             cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        if (string.IsNullOrWhiteSpace(result?.AuthorizationUrl))
+        {
+            throw new InvalidOperationException(
+                "The payment API did not return a checkout URL.");
+        }
 
-        return await response.Content
-            .ReadFromJsonAsync<PaymentInitializationDto>(
-                cancellationToken);
+        return result.AuthorizationUrl;
     }
 
     public async Task<PaymentVerificationDto?> VerifyAsync(

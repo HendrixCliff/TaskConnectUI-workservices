@@ -55,7 +55,8 @@ builder.Services.AddScoped<QuoteService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<JobAssignmentService>();
 
-
+builder.Services.AddScoped<
+    WorkServices.Web.Features.Payments.PaymentService>();
 builder.Services.AddScoped<WorkServicesAuthenticationStateProvider>();
 
 builder.Services.AddScoped<AuthenticationStateProvider>(

@@ -60,25 +60,31 @@
 
                 <nav class="nav flex-column px-3">
 
-                    @if (Role == "Customer")
-                    {
-                        <NavLink class="nav-link"
-                                 href="/customer"
-                                 Match="NavLinkMatch.All">
-                            Dashboard
-                        </NavLink>
+                    
+           @if (Role == "Customer")
+        {
+            <NavLink class="nav-link" href="/customer" Match="NavLinkMatch.All">
+                <i class="bi bi-speedometer2 me-2"></i>
+                Dashboard
+            </NavLink>
 
-                        <NavLink class="nav-link"
-                                 href="/customer/requests">
-                            My Requests
-                        </NavLink>
+            <NavLink class="nav-link" href="/customer/requests">
+                <i class="bi bi-clipboard-check me-2"></i>
+                My Requests
+            </NavLink>
 
-                        <NavLink class="nav-link"
-                                 href="/customer/request/new">
-                            Request a Service
-                        </NavLink>
-                    }
-                    else if (Role == "Artisan")
+            <!-- ADD MY QUOTES HERE -->
+            <NavLink class="nav-link" href="/customer/quotes">
+                <i class="bi bi-file-earmark-text me-2"></i>
+                My Quotes
+            </NavLink>
+
+            <NavLink class="nav-link" href="/customer/request/new">
+                <i class="bi bi-plus-circle me-2"></i>
+                Request a Service
+            </NavLink>
+        }
+                            else if (Role == "Artisan")
                     {
                         <NavLink class="nav-link"
                                  href="/artisan"

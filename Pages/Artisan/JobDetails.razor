@@ -51,7 +51,18 @@
                     </span>
                 </div>
 
-                <p>@Request.Description</p>
+               <div class="mb-3">
+                <h3 class="h6 text-muted">Customer's description</h3>
+
+                @if (string.IsNullOrWhiteSpace(Request.Description))
+                {
+                    <p class="text-muted">No description was provided.</p>
+                }
+                else
+                {
+                    <p class="mb-0">@Request.Description</p>
+                }
+            </div>
 
                 <dl class="row mt-4">
                     <dt class="col-sm-3">Address</dt>
@@ -82,35 +93,45 @@
                     </dd>
                 </dl>
 
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                    <button type="button"
-                            class="btn btn-success"
-                            disabled="@(Busy || Request.Accepted)"
-                            @onclick="AcceptAsync">
-                        Accept
-                    </button>
+                
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <button type="button"
+                        class="btn btn-success"
+                        disabled="@(Busy || Request.Accepted)"
+                        @onclick="AcceptAsync">
+                    Accept
+                </button>
 
-                    <button type="button"
-                            class="btn btn-outline-danger"
-                            disabled="@(Busy || Request.Accepted)"
-                            @onclick="RejectAsync">
-                        Reject
-                    </button>
+                <button type="button"
+                        class="btn btn-outline-danger"
+                        disabled="@(Busy || Request.Accepted)"
+                        @onclick="RejectAsync">
+                    Reject
+                </button>
 
-                    <button type="button"
-                            class="btn btn-primary"
-                            disabled="@Busy"
-                            @onclick="StartAsync">
-                        Start Job
-                    </button>
+                <button type="button"
+                        class="btn btn-primary"
+                        disabled="@Busy"
+                        @onclick="StartAsync">
+                    Start Job
+                </button>
 
-                    <button type="button"
-                            class="btn btn-dark"
-                            disabled="@Busy"
-                            @onclick="CompleteAsync">
-                        Complete Job
-                    </button>
-                </div>
+                <button type="button"
+                        class="btn btn-dark"
+                        disabled="@Busy"
+                        @onclick="CompleteAsync">
+                    Complete Job
+                </button>
+
+               
+                        <a class="btn btn-outline-primary"
+                        href="@($"/artisan/job/{Request.ServiceRequestId}/quote")">
+                            <i class="bi bi-file-earmark-text me-1"></i>
+                            Create Quote
+                        </a>
+                   
+            </div>
+
 
                 @if (!string.IsNullOrWhiteSpace(Message))
                 {

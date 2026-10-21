@@ -1,87 +1,252 @@
-@using WorkServices.Web.Features.Quotes
-@using WorkServices.Web.Features.Quotes.Models
-@inject QuoteService QuoteService
 
 @page "/customer/quotes/{ServiceRequestId:guid}"
-@attribute [Authorize(Roles = "Customer")]
-@inject ApiClient Api
-@inject NavigationManager Navigation
 
-<PageTitle>Quotes</PageTitle>
+@using System.Globalization
+@using System.Net
+@using Microsoft.AspNetCore.Authorization
+@using WorkServices.Web.Features.Quotes.Models
+@using WorkServices.Web.Layout
+@using WorkServices.Web.Services
+
+@attribute [Authorize(Roles = "Customer")]
+@layout CustomerLayout
+
+@inject ApiClient Api
+
+<PageTitle>Quote Details</PageTitle>
 
 <div class="container py-4">
-    <h1>Quotes</h1>
+    <div class="mb-4">
+        <h1>Quote Details</h1>
+        <p class="text-muted">
+            Review the artisan's proposed labour and material costs.
+        </p>
+        <div class="small text-muted">
+            Service request: @ServiceRequestId
+        </div>
+    </div>
 
     @if (Busy)
     {
-        <p>Loading quotes...</p>
+        <div class="d-flex align-items-center gap-2 py-4">
+            <div class="spinner-border spinner-border-sm text-primary"
+                 role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span>Loading quote details...</span>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(Error))
     {
-        <div class="alert alert-danger">@Error</div>
+        <div class="alert alert-danger" role="alert">
+            @Error
+
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm ms-2"
+                    @onclick="LoadQuotesAsync">
+                Try again
+            </button>
+        </div>
     }
     else if (Quotes.Count == 0)
     {
-        <div class="alert alert-info">No quotes have been submitted yet.</div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-5 text-center">
+                <h2 class="h5">No quote available yet</h2>
+                <p class="text-muted mb-0">
+                    The artisan has not submitted a quote for this request.
+                    Please check again later.
+                </p>
+            </div>
+        </div>
     }
     else
     {
         @foreach (var quote in Quotes)
         {
-            <div class="card p-4 mb-3" @key="quote.Id">
-                <h2>Quote @quote.Id.ToString()[..8]</h2>
-                <p>@quote.Description</p>
+            <div class="card border-0 shadow-sm mb-4" @key="quote.Id">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap justify-content-between
+                                align-items-start gap-3 mb-4">
+                        <div>
+                            <h2 class="h5 mb-1">
+                                Quote @quote.Id.ToString()[..8]
+                            </h2>
+                            <div class="small text-muted">
+                                Quote ID: @quote.Id
+                            </div>
+                        </div>
 
-                <dl class="row">
-                    <dt class="col-sm-4">Labour</dt>
-                    <dd class="col-sm-8">@quote.LabourCost.ToString("C")</dd>
+                        @if (quote.Approved)
+                        {
+                            <span class="badge bg-success">
+                                Approved
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">
+                                Awaiting approval
+                            </span>
+                        }
+                    </div>
 
-                    <dt class="col-sm-4">Materials</dt>
-                    <dd class="col-sm-8">@quote.MaterialsCost.ToString("C")</dd>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted mb-1">Labour cost</div>
+                                <div class="fs-4 fw-semibold">
+                                    @quote.LabourCost.ToString("C2", NairaCulture)
+                                </div>
+                            </div>
+                        </div>
 
-                    <dt class="col-sm-4">Total</dt>
-                    <dd class="col-sm-8 fw-bold">@quote.TotalCost.ToString("C")</dd>
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted mb-1">Material cost</div>
+                                <div class="fs-4 fw-semibold">
+                                    @quote.MaterialCost.ToString("C2", NairaCulture)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                    <dt class="col-sm-4">Status</dt>
-                    <dd class="col-sm-8">@(quote.Status ?? "Pending")</dd>
-                </dl>
+                    <div class="bg-light rounded p-3 mb-4">
+                        <div class="text-muted">Total quote amount</div>
+                        <div class="fs-3 fw-bold">
+                            @quote.TotalCost.ToString("C2", NairaCulture)
+                        </div>
+                    </div>
 
-                <button class="btn btn-primary align-self-start"
-                        disabled="@IsApproved(quote)"
-                        @onclick="() => ApproveAsync(quote.Id)">
-                    @(IsApproved(quote) ? "Approved" : "Approve quote")
-                </button>
+                    @if (!string.IsNullOrWhiteSpace(quote.Notes))
+                    {
+                        <div class="mb-4">
+                            <h3 class="h6">Artisan's notes</h3>
+                            <p class="mb-0">@quote.Notes</p>
+                        </div>
+                    }
+                    @if (quote.Approved)
+                    {
+                        <a class="btn btn-primary"
+                        href="@($"/customer/payment/{ServiceRequestId}")">
+                            <i class="bi bi-credit-card me-1"></i>
+                            View payments
+                        </a>
+                    }
+                    @if (quote.Approved)
+                    {
+                        <div class="alert alert-success mb-0">
+                            <strong>Quote approved.</strong>
+                            The quote has been approved. Follow the payment
+                            workflow to proceed with the job.
+                        </div>
+                    }
+                    else
+                    {
+                        @if (ApprovingQuoteId == quote.Id)
+                        {
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    disabled>
+                                <span class="spinner-border spinner-border-sm me-2"
+                                      aria-hidden="true"></span>
+                                Approving quote...
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    disabled="@ApprovingQuoteId.HasValue"
+                                    @onclick="() => ApproveAsync(quote.Id)">
+                                Approve quote
+                            </button>
+                        }
+                    }
+
+                    @if (ActionErrors.TryGetValue(quote.Id, out var actionError))
+                    {
+                        <div class="alert alert-danger mt-3 mb-0" role="alert">
+                            @actionError
+                        </div>
+                    }
+                </div>
             </div>
         }
     }
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
-        <div class="alert alert-info">@Message</div>
+        <div class="alert alert-info" role="status">
+            @Message
+        </div>
     }
+
+    <a class="btn btn-outline-secondary"
+       href="@($"/customer/requests/{ServiceRequestId}")">
+        Back to request
+    </a>
 </div>
 
 @code {
-    [Parameter] public Guid ServiceRequestId { get; set; }
+    [Parameter]
+    public Guid ServiceRequestId { get; set; }
 
-    private List<QuoteDto> Quotes = [];
-    private bool Busy = true;
-    private string? Error;
-    private string? Message;
+    private static readonly CultureInfo NairaCulture =
+        CultureInfo.GetCultureInfo("en-NG");
 
-    protected override async Task OnParametersSetAsync()
+    private List<QuoteDto> Quotes { get; set; } = [];
+
+    private Dictionary<Guid, string> ActionErrors { get; set; } = [];
+
+    private Guid? ApprovingQuoteId { get; set; }
+
+    private bool Busy { get; set; } = true;
+
+    private string? Error { get; set; }
+
+    private string? Message { get; set; }
+
+    protected override Task OnParametersSetAsync() => LoadQuotesAsync();
+
+    private async Task LoadQuotesAsync()
     {
         Busy = true;
         Error = null;
+        Message = null;
 
         try
         {
-            Quotes = await Api.GetAsync<List<QuoteDto>>(
-                $"quotes/service-request/{ServiceRequestId}") ?? [];
+          
+            var quote = await Api.GetAsync<QuoteDto>(
+                $"quotes/service-request/{ServiceRequestId}");
+
+            Quotes = quote is null ? [] : [quote];
+            ActionErrors.Clear();
         }
-        catch
+        catch (ApiException ex)
         {
-            Error = "Unable to load quotes.";
+            Error = ex.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized =>
+                    "Your session has expired. Please sign in again.",
+
+                HttpStatusCode.Forbidden =>
+                    "You are not authorized to view this quote.",
+
+                HttpStatusCode.NotFound =>
+                    "No quote was found for this service request.",
+
+                _ => "Unable to load the quote. Please try again."
+            };
+        }
+        catch (HttpRequestException)
+        {
+            Error = "Unable to connect to the server. Check your connection.";
+        }
+        catch (Exception)
+        {
+            Error = "The quote response could not be read. Please check the API response format.";
         }
         finally
         {
@@ -89,24 +254,55 @@
         }
     }
 
-    private static bool IsApproved(QuoteDto quote) =>
-        string.Equals(quote.Status, "Approved",
-            StringComparison.OrdinalIgnoreCase);
-
     private async Task ApproveAsync(Guid quoteId)
     {
+        if (ApprovingQuoteId.HasValue)
+            return;
+
+        ApprovingQuoteId = quoteId;
+        ActionErrors.Remove(quoteId);
         Message = null;
 
         try
         {
             await Api.PostAsync($"quotes/{quoteId}/approve");
+
             Message = "Quote approved successfully.";
-            await OnParametersSetAsync();
+
+            await LoadQuotesAsync();
         }
-        catch
+        catch (ApiException ex)
         {
-            Message = "Unable to approve this quote.";
+            ActionErrors[quoteId] = ex.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized =>
+                    "Your session has expired. Please sign in again.",
+
+                HttpStatusCode.Forbidden =>
+                    "Only the customer who owns this request can approve its quote.",
+
+                HttpStatusCode.NotFound =>
+                    "The quote could not be found.",
+
+                HttpStatusCode.BadRequest =>
+                    "The quote could not be approved. It may already be approved or the request status may have changed.",
+
+                _ => "Unable to approve the quote. Please try again."
+            };
+        }
+        catch (HttpRequestException)
+        {
+            ActionErrors[quoteId] =
+                "Unable to connect to the server. Please try again.";
+        }
+        catch (Exception)
+        {
+            ActionErrors[quoteId] =
+                "An unexpected error occurred while approving the quote.";
+        }
+        finally
+        {
+            ApprovingQuoteId = null;
         }
     }
 }
-

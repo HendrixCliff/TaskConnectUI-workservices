@@ -1,14 +1,18 @@
-@using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.AspNetCore.Authorization
-@using WorkServices.Web.Services
-@using WorkServices.Web.Features.Reviews
-@using WorkServices.Web.Features.Reviews.Models
-@inject ReviewService ReviewService
 
 @page "/customer/review/{ServiceRequestId:guid}"
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using WorkServices.Web.Layout
+@using WorkServices.Web.Services
+@using WorkServices.Web.Features.Reviews.Models
+
 @attribute [Authorize(Roles = "Customer")]
+@layout CustomerLayout
+
 @inject ApiClient Api
 @inject NavigationManager Navigation
+
 
 <PageTitle>Review Artisan</PageTitle>
 

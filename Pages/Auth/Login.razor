@@ -38,19 +38,25 @@
                     For="@(() => Model.Email)" />
             </div>
 
-            <div class="form-group">
-                <label for="password">
-                    Password
-                </label>
+            <div class="mb-3">
+    <label class="form-label">Password</label>
 
-                <InputText id="password"
-                           type="password"
-                           class="form-control"
-                           @bind-Value="Model.Password" />
+    <div class="input-group">
+        <InputText type="@(ShowPassword ? "text" : "password")"
+                   class="form-control"
+                   autocomplete="current-password"
+                   @bind-Value="Model.Password" />
 
-                <ValidationMessage
-                    For="@(() => Model.Password)" />
-            </div>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                @onclick="() => ShowPassword = !ShowPassword"
+                aria-label="Toggle password visibility">
+            @(ShowPassword ? "Hide" : "Show")
+        </button>
+    </div>
+
+    <ValidationMessage For="@(() => Model.Password)" />
+</div>
 
             @if (!string.IsNullOrWhiteSpace(ErrorMessage))
             {
@@ -77,7 +83,7 @@
     private LoginRequest Model { get; } = new();
 
     private bool IsBusy;
-
+    private bool ShowPassword;
     private string? ErrorMessage;
 
     private async Task LoginAsync()

@@ -4,98 +4,181 @@
 @using Microsoft.AspNetCore.Authorization
 @using WorkServices.Web.Features.Payments
 @using WorkServices.Web.Features.Payments.Models
+@using WorkServices.Web.Layout
+@using WorkServices.Web.Services
+@using System.Globalization
 
 @attribute [Authorize(Roles = "Customer")]
+@layout CustomerLayout
 
 @inject PaymentService PaymentService
 @inject NavigationManager Navigation
 
-<PageTitle>Payment</PageTitle>
+<PageTitle>Payments | WorkServices</PageTitle>
 
 <div class="container py-4">
-    <h1>Payment</h1>
-    <p class="text-muted">
-        Review the payments associated with this service request.
-    </p>
+    <div class="mb-4">
+        <a href="@($"/customer/requests/{ServiceRequestId}")"
+           class="text-decoration-none">
+            &larr; Back to service request
+        </a>
+
+        <h1 class="mt-3">Payments</h1>
+        <p class="text-muted">
+            View payment records and continue to secure Paystack checkout.
+        </p>
+    </div>
 
     @if (Busy)
     {
-        <p><span class="spinner-border spinner-border-sm me-2"></span>Loading payment details...</p>
+        <div class="d-flex align-items-center gap-2 py-4">
+            <div class="spinner-border spinner-border-sm text-primary"
+                 role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span>Loading payment details...</span>
+        </div>
     }
-    else if (!string.IsNullOrWhiteSpace(Error))
+
+    @if (!string.IsNullOrWhiteSpace(Error))
     {
-        <div class="alert alert-danger" role="alert">@Error</div>
+        <div class="alert alert-danger" role="alert">
+            @Error
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm ms-2"
+                    disabled="@Busy"
+                    @onclick="LoadPaymentsAsync">
+                Try again
+            </button>
+        </div>
     }
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
-        <div class="alert alert-info" role="status">@Message</div>
-    }
-
-    @if (!Busy && _payments.Count == 0 && string.IsNullOrWhiteSpace(Error))
-    {
-        <div class="alert alert-secondary">
-            No payments were found for this service request.
+        <div class="alert alert-info" role="status">
+            @Message
         </div>
     }
 
-    @if (_payments.Count > 0)
+    @if (!Busy && string.IsNullOrWhiteSpace(Error))
     {
-        <div class="row g-3">
-            @foreach (var payment in _payments)
-            {
-                <div class="col-12" @key="payment.Id">
-                    <div class="card p-4">
-                        <h2 class="h5">Payment details</h2>
+        @if (_payments.Count == 0)
+        {
+            <div class="alert alert-secondary">
+                No payment records exist for this request yet.
+                Choose a payment type below to ask the server to initialize
+                an eligible payment.
+            </div>
+        }
+        else
+        {
+            <h2 class="h4 mb-3">Payment history</h2>
 
-                        <dl class="row mt-3 mb-3">
-                            <dt class="col-sm-4">Payment ID</dt>
-                            <dd class="col-sm-8">@payment.Id</dd>
+            <div class="row g-3">
+                @foreach (var payment in _payments)
+                {
+                    <div class="col-12" @key="payment.PaymentId">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <div class="d-flex flex-wrap justify-content-between
+                                            align-items-start gap-2">
+                                    <h3 class="h5 mb-0">
+                                        @payment.Type payment
+                                    </h3>
 
-                            <dt class="col-sm-4">Reference</dt>
-                            <dd class="col-sm-8">
-                                @(payment.Reference ?? "Not assigned")
-                            </dd>
+                                    <span class="@GetStatusBadgeClass(payment.Status)">
+                                        @payment.Status
+                                    </span>
+                                </div>
 
-                            <dt class="col-sm-4">Amount</dt>
-                            <dd class="col-sm-8">
-                                @payment.Amount.ToString("N2")
-                            </dd>
+                                <dl class="row mt-3 mb-3">
+                                    <dt class="col-sm-4">Amount</dt>
+                                    <dd class="col-sm-8 fw-bold">
+                                        @payment.Amount.ToString("C2", NairaCulture)
+                                    </dd>
 
-                            <dt class="col-sm-4">Status</dt>
-                            <dd class="col-sm-8">
-                                @(payment.Status ?? "Unknown")
-                            </dd>
-                        </dl>
+                                    <dt class="col-sm-4">Payment ID</dt>
+                                    <dd class="col-sm-8 text-break">
+                                        @payment.PaymentId
+                                    </dd>
 
-                        <div class="d-flex flex-wrap gap-2">
-                            <button type="button"
-                                    class="btn btn-primary"
-                                    disabled="@Busy"
-                                    @onclick="() => InitializePaymentAsync(payment.Id)">
-                                Continue to payment
-                            </button>
+                                    <dt class="col-sm-4">Reference</dt>
+                                    <dd class="col-sm-8 text-break">
+                                        @(string.IsNullOrWhiteSpace(payment.Reference)
+                                            ? "Not assigned"
+                                            : payment.Reference)
+                                    </dd>
+                                </dl>
 
-                            @if (!string.IsNullOrWhiteSpace(payment.Reference))
-                            {
-                                <button type="button"
-                                        class="btn btn-outline-secondary"
-                                        disabled="@Busy"
-                                        @onclick="() => VerifyPaymentAsync(payment.Reference!)">
-                                    Verify payment
-                                </button>
-                            }
+                                @if (IsPending(payment.Status))
+                                {
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="button"
+                                                class="btn btn-primary"
+                                                disabled="@Busy"
+                                                @onclick="() => InitializePaymentAsync(payment.Type)">
+                                            Continue to payment
+                                        </button>
+
+                                        @if (!string.IsNullOrWhiteSpace(payment.Reference))
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary"
+                                                    disabled="@Busy"
+                                                    @onclick="() => VerifyPaymentAsync(payment.Reference)">
+                                                Verify payment
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </div>
                     </div>
-                </div>
-            }
-        </div>
+                }
+            </div>
+        }
     }
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body p-4">
+            <h2 class="h4">Start a payment</h2>
+
+            <p class="text-muted">
+                Payment amounts are calculated by the server from your
+                approved quote. Only payments allowed by the current job
+                status can be initialized.
+            </p>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button"
+                        class="btn btn-primary"
+                        disabled="@Busy"
+                        @onclick="PayForMaterialsAsync">
+                    Pay for materials
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-primary"
+                        disabled="@Busy"
+                        @onclick="PayForLabourAsync">
+                    Pay for labour
+                </button>
+            </div>
+
+            <small class="text-muted d-block mt-3">
+                Materials payment requires an approved quote. Labour payment
+                requires the job to be completed.
+            </small>
+        </div>
+    </div>
 </div>
 
 @code {
     [Parameter]
     public Guid ServiceRequestId { get; set; }
+
+    private static readonly CultureInfo NairaCulture =
+        CultureInfo.GetCultureInfo("en-NG");
 
     private List<PaymentDto> _payments = [];
     private bool Busy;
@@ -104,6 +187,12 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (ServiceRequestId == Guid.Empty)
+        {
+            Error = "A valid service request is required.";
+            return;
+        }
+
         await LoadPaymentsAsync();
     }
 
@@ -117,9 +206,29 @@
             _payments = await PaymentService.GetByServiceRequestAsync(
                 ServiceRequestId);
         }
+        catch (ApiException ex)
+        {
+            Error = ex.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Unauthorized =>
+                    "Your session has expired. Please sign in again.",
+
+                System.Net.HttpStatusCode.Forbidden =>
+                    "You are not authorized to view these payments.",
+
+                System.Net.HttpStatusCode.NotFound =>
+                    "The service request or payment records could not be found.",
+
+                _ => "Unable to load payment details. Please try again."
+            };
+        }
         catch (HttpRequestException)
         {
-            Error = "Unable to load payments for this service request.";
+            Error = "Unable to connect to the server.";
+        }
+        catch (Exception)
+        {
+            Error = "An unexpected error occurred while loading payments.";
         }
         finally
         {
@@ -127,32 +236,83 @@
         }
     }
 
-    private async Task InitializePaymentAsync(Guid paymentId)
+    private Task PayForMaterialsAsync() =>
+        InitializePaymentAsync("Material");
+
+    private Task PayForLabourAsync() =>
+        InitializePaymentAsync("Labour");
+
+    private async Task InitializePaymentAsync(string paymentType)
     {
+        if (Busy)
+            return;
+
+        if (paymentType is not ("Material" or "Labour"))
+        {
+            Error = "Unsupported payment type.";
+            return;
+        }
+
         Busy = true;
         Error = null;
         Message = null;
 
         try
         {
-            var result = await PaymentService.InitializeAsync(paymentId);
+            var type = paymentType == "Material"
+                ? PaymentType.Material
+                : PaymentType.Labour;
 
-            if (result is null ||
-                !Uri.TryCreate(
-                    result.AuthorizationUrl,
+            var checkoutUrl = await PaymentService.InitializePaymentAsync(
+                ServiceRequestId,
+                type);
+
+            if (!Uri.TryCreate(
+                    checkoutUrl,
                     UriKind.Absolute,
-                    out var paymentUri) ||
-                paymentUri.Scheme != Uri.UriSchemeHttps)
+                    out var paymentUri)
+                || paymentUri.Scheme != Uri.UriSchemeHttps
+                || !string.Equals(
+                    paymentUri.Host,
+                    "checkout.paystack.com",
+                    StringComparison.OrdinalIgnoreCase))
             {
-                Error = "The payment provider did not return a valid HTTPS payment URL.";
+                Error = "The server returned an invalid payment checkout URL.";
                 return;
             }
 
             Navigation.NavigateTo(paymentUri.AbsoluteUri, forceLoad: true);
         }
+        catch (ApiException ex)
+        {
+            Error = ex.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Unauthorized =>
+                    "Please sign in again to make a payment.",
+
+                System.Net.HttpStatusCode.Forbidden =>
+                    "You are not authorized to make this payment.",
+
+                System.Net.HttpStatusCode.BadRequest =>
+                    "This payment is not currently allowed. Check the quote approval and job status.",
+
+                System.Net.HttpStatusCode.NotFound =>
+                    "The service request or approved quote could not be found.",
+
+                _ => "Unable to initialize payment. Please try again."
+            };
+        }
         catch (HttpRequestException)
         {
-            Error = "Unable to initialize payment. Please try again.";
+            Error = "Unable to connect to the payment service.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            Error = ex.Message;
+        }
+        catch (Exception)
+        {
+            Error = "An unexpected error occurred while starting payment.";
         }
         finally
         {
@@ -162,11 +322,8 @@
 
     private async Task VerifyPaymentAsync(string reference)
     {
-        if (string.IsNullOrWhiteSpace(reference))
-        {
-            Error = "A payment reference is required.";
+        if (Busy || string.IsNullOrWhiteSpace(reference))
             return;
-        }
 
         Busy = true;
         Error = null;
@@ -177,15 +334,62 @@
             var result = await PaymentService.VerifyAsync(reference);
 
             Message = result?.Message ?? "Payment verification completed.";
+
             await LoadPaymentsAsync();
+        }
+        catch (ApiException ex)
+        {
+            Error = ex.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Unauthorized =>
+                    "Please sign in again to verify payment.",
+
+                System.Net.HttpStatusCode.Forbidden =>
+                    "You are not authorized to verify this payment.",
+
+                System.Net.HttpStatusCode.BadRequest =>
+                    "The payment has not been confirmed as successful.",
+
+                System.Net.HttpStatusCode.NotFound =>
+                    "The payment reference could not be found.",
+
+                _ => "Unable to verify payment. Please try again."
+            };
         }
         catch (HttpRequestException)
         {
-            Error = "Unable to verify payment. Please try again.";
+            Error = "Unable to connect while verifying payment.";
+        }
+        catch (Exception)
+        {
+            Error = "An unexpected error occurred while verifying payment.";
         }
         finally
         {
             Busy = false;
         }
+    }
+
+    private static bool IsPending(string? status) =>
+        string.Equals(
+            status,
+            "Pending",
+            StringComparison.OrdinalIgnoreCase);
+
+    private static string GetStatusBadgeClass(string? status)
+    {
+        if (string.Equals(status, "Pending",
+                StringComparison.OrdinalIgnoreCase))
+            return "badge bg-warning text-dark";
+
+        if (string.Equals(status, "MaterialPaid",
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, "LabourPaid",
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, "Successful",
+                StringComparison.OrdinalIgnoreCase))
+            return "badge bg-success";
+
+        return "badge bg-secondary";
     }
 }

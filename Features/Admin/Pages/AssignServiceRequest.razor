@@ -1,11 +1,10 @@
-
-@page "/admin/service-request/{ServiceRequestId:guid}/assign"
+ @page "/admin/service-request/{ServiceRequestId:guid}/assign"
 
 @attribute [Authorize(Roles = "Admin")]
-
 @layout AdminLayout
 
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using WorkServices.Web.Features.Admin.Models
 @using WorkServices.Web.Features.JobAssignments
 @using WorkServices.Web.Features.JobAssignments.Models
@@ -29,7 +28,7 @@
 
         <button type="button"
                 class="btn btn-outline-secondary"
-                @onclick="@(() => NavigationManager.NavigateTo("/admin"))">
+                @onclick="GoBack">
             Back to Dashboard
         </button>
     </div>
@@ -57,19 +56,23 @@
 
     @if (IsLoading)
     {
-        <p>
-            <span class="spinner-border spinner-border-sm me-2"></span>
-            Loading artisans...
-        </p>
+        <div class="d-flex align-items-center gap-2" role="status">
+            <span class="spinner-border spinner-border-sm"></span>
+            <span>Loading artisans...</span>
+        </div>
     }
     else if (Artisans.Count == 0)
     {
-        <div class="alert alert-warning">
-            No artisans were returned by the API. Check that the admin
-            artisans endpoint is working and that artisans are registered.
+        <div class="alert alert-warning" role="alert">
+            No artisans are available to display.
+            @if (string.IsNullOrWhiteSpace(Error))
+            {
+                <span>Verify that artisans are registered and the API returned data.</span>
+            }
         </div>
 
-        <button class="btn btn-outline-primary"
+        <button type="button"
+                class="btn btn-outline-primary"
                 @onclick="LoadArtisansAsync"
                 disabled="@IsSubmitting">
             Retry
@@ -88,24 +91,20 @@
                             Select artisan
                         </label>
 
-                        <select id="artisan"
-                                class="form-select"
-                                @bind="ArtisanIdText"
-                                required>
+                        <InputSelect id="artisan"
+                                     class="form-select"
+                                     @bind-Value="ArtisanIdText"
+                                     TValue="string">
                             <option value="">-- Select an artisan --</option>
 
                             @foreach (var artisan in Artisans)
                             {
                                 <option @key="artisan.Id"
                                         value="@artisan.Id.ToString()">
-                                    @artisan.FullName (@artisan.Email)
-                                    @if (!string.IsNullOrWhiteSpace(artisan.ServiceType))
-                                    {
-                                        @($" — {artisan.ServiceType}")
-                                    }
+                                    @artisan.FullName (@artisan.Email)@FormatServiceType(artisan.ServiceType)
                                 </option>
                             }
-                        </select>
+                        </InputSelect>
 
                         <div class="form-text">
                             Choose the artisan who should receive this request.
@@ -114,7 +113,7 @@
 
                     <button type="submit"
                             class="btn btn-primary"
-                            disabled="@IsSubmitting || string.IsNullOrWhiteSpace(ArtisanIdText)">
+                            disabled="@(IsSubmitting || string.IsNullOrWhiteSpace(ArtisanIdText))">
                         @if (IsSubmitting)
                         {
                             <span class="spinner-border spinner-border-sm me-2"></span>
@@ -141,11 +140,18 @@
     private string ArtisanIdText = string.Empty;
     private string? Error;
     private string? Success;
-    private bool IsLoading = true;
+    private bool IsLoading;
     private bool IsSubmitting;
 
     protected override async Task OnParametersSetAsync()
     {
+        if (ServiceRequestId == Guid.Empty)
+        {
+            Error = "The service request ID is invalid.";
+            Artisans = [];
+            return;
+        }
+
         await LoadArtisansAsync();
     }
 
@@ -153,18 +159,33 @@
     {
         IsLoading = true;
         Error = null;
+        Artisans = [];
+        ArtisanIdText = string.Empty;
 
         try
         {
+            // Maps to GET /api/admin/artisans through ApiClient's API base URL.
             var result = await Api.GetAsync<List<AdminUserDto>>(
                 "admin/artisans");
 
             Artisans = result ?? [];
+
+            if (Artisans.Count == 0)
+            {
+                Error = "The API returned no artisans.";
+            }
         }
-        catch (Exception ex)
+        catch (ApiException ex)
         {
-            Artisans = [];
-            Error = $"Unable to load artisans: {ex.Message}";
+            Error = $"Unable to load artisans. API returned HTTP {(int)ex.StatusCode}.";
+        }
+        catch (HttpRequestException)
+        {
+            Error = "Unable to reach the API. Check your connection and try again.";
+        }
+        catch (Exception)
+        {
+            Error = "An unexpected error occurred while loading artisans.";
         }
         finally
         {
@@ -177,15 +198,21 @@
         Error = null;
         Success = null;
 
+        if (ServiceRequestId == Guid.Empty)
+        {
+            Error = "The service request ID is invalid.";
+            return;
+        }
+
         if (!Guid.TryParse(ArtisanIdText, out var artisanId))
         {
             Error = "Please select a valid artisan.";
             return;
         }
 
-        if (ServiceRequestId == Guid.Empty)
+        if (!Artisans.Any(a => a.Id == artisanId))
         {
-            Error = "The service request ID is invalid.";
+            Error = "The selected artisan is not in the loaded artisan list. Reload the list and try again.";
             return;
         }
 
@@ -199,16 +226,35 @@
             await JobAssignmentService.AssignAsync(Model);
 
             Success = "The artisan was assigned successfully.";
-
-            NavigationManager.NavigateTo("/admin");
+            ArtisanIdText = string.Empty;
         }
-        catch (Exception ex)
+        catch (ApiException ex)
         {
-            Error = $"Assignment failed: {ex.Message}";
+            Error = $"Assignment failed. API returned HTTP {(int)ex.StatusCode}.";
+        }
+        catch (HttpRequestException)
+        {
+            Error = "Unable to reach the API while assigning the artisan.";
+        }
+        catch (Exception)
+        {
+            Error = "An unexpected error occurred while assigning the artisan.";
         }
         finally
         {
             IsSubmitting = false;
         }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/admin");
+    }
+
+    private static string FormatServiceType(string? serviceType)
+    {
+        return string.IsNullOrWhiteSpace(serviceType)
+            ? string.Empty
+            : $" — {serviceType}";
     }
 }

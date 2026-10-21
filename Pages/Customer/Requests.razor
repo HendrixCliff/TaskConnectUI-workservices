@@ -40,6 +40,7 @@
                         <th>Address</th>
                         <th>Status</th>
                         <th>Request ID</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,6 +57,15 @@
                             <td>
                                 <small>@request.Id</small>
                             </td>
+                            
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary"
+                                href="@($"/customer/quotes/{request.Id}")">
+                                    <i class="bi bi-file-earmark-text me-1"></i>
+                                    View Quote
+                                </a>
+                            </td>
+
                         </tr>
                     }
                 </tbody>

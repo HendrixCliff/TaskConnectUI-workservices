@@ -1,0 +1,256 @@
+
+@page "/artisan/job/{ServiceRequestId:guid}/quote"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using WorkServices.Web.Services
+
+@attribute [Authorize(Roles = "Artisan")]
+@layout ArtisanLayout
+@inject ApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>Create Quote</PageTitle>
+
+<div class="container py-4" style="max-width: 760px;">
+    <div class="mb-4">
+        <a href="/artisan/jobs" class="text-decoration-none">
+            &larr; Back to my jobs
+        </a>
+        <h2 class="mt-3">Create Service Quote</h2>
+        <p class="text-muted">
+            Enter the estimated materials and labour costs for this job.
+        </p>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <div class="mb-4">
+                <label class="form-label">Service request</label>
+                <input class="form-control"
+                       value="@ServiceRequestId"
+                       readonly />
+                <div class="form-text">
+                    This ID is supplied automatically from the selected job.
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @ErrorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+            {
+                <div class="alert alert-success" role="status">
+                    @SuccessMessage
+                    <div class="mt-3">
+                        <a class="btn btn-outline-success"
+                           href="/artisan/jobs">
+                            Return to my jobs
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <EditForm Model="@Model" OnSubmit="@SubmitQuoteAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label for="materialCost" class="form-label">
+                        Materials cost (₦)
+                    </label>
+                    <InputNumber id="materialCost"
+                                 class="form-control"
+                                 @bind-Value="Model.MaterialCost"
+                                 min="0"
+                                 step="0.01"
+                                 disabled="@IsSubmitting" />
+                    <ValidationMessage For="@(() => Model.MaterialCost)" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="labourCost" class="form-label">
+                        Labour cost (₦)
+                    </label>
+                    <InputNumber id="labourCost"
+                                 class="form-control"
+                                 @bind-Value="Model.LabourCost"
+                                 min="0"
+                                 step="0.01"
+                                 disabled="@IsSubmitting" />
+                    <ValidationMessage For="@(() => Model.LabourCost)" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="notes" class="form-label">
+                        Notes for the customer
+                    </label>
+                    <InputTextArea id="notes"
+                                   class="form-control"
+                                   rows="4"
+                                   @bind-Value="Model.Notes"
+                                   disabled="@IsSubmitting"
+                                   placeholder="Describe the work, materials, or other relevant details." />
+                    <ValidationMessage For="@(() => Model.Notes)" />
+                </div>
+
+                <div class="rounded bg-light p-3 mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Materials</span>
+                        <strong>@Model.MaterialCost.ToString("C2", NairaCulture)</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Labour</span>
+                        <strong>@Model.LabourCost.ToString("C2", NairaCulture)</strong>
+                    </div>
+                    <hr />
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">Total quote</span>
+                        <strong class="fs-5">
+                            @TotalCost.ToString("C2", NairaCulture)
+                        </strong>
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary w-100"
+                        disabled="@IsSubmitting">
+                    @if (IsSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"
+                              aria-hidden="true"></span>
+                        <span>Submitting quote...</span>
+                    }
+                    else
+                    {
+                        <span>Submit Quote</span>
+                    }
+                </button>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid ServiceRequestId { get; set; }
+
+    private readonly System.Globalization.CultureInfo NairaCulture =
+        System.Globalization.CultureInfo.GetCultureInfo("en-NG");
+
+    private CreateQuoteRequest Model { get; set; } = new();
+
+    private bool IsSubmitting { get; set; }
+
+    private string? ErrorMessage { get; set; }
+
+    private string? SuccessMessage { get; set; }
+
+    private decimal TotalCost => Model.MaterialCost + Model.LabourCost;
+
+    protected override void OnParametersSet()
+    {
+        if (ServiceRequestId == Guid.Empty)
+        {
+            ErrorMessage = "A valid service request is required.";
+        }
+    }
+
+    private async Task SubmitQuoteAsync()
+    {
+        if (IsSubmitting)
+            return;
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        if (ServiceRequestId == Guid.Empty)
+        {
+            ErrorMessage = "The service request ID is invalid.";
+            return;
+        }
+
+        if (Model.MaterialCost < 0 || Model.LabourCost < 0)
+        {
+            ErrorMessage = "Costs cannot be negative.";
+            return;
+        }
+
+        if (TotalCost <= 0)
+        {
+            ErrorMessage = "The total quote must be greater than zero.";
+            return;
+        }
+
+        IsSubmitting = true;
+
+        try
+        {
+            var request = new CreateQuoteRequest
+            {
+                ServiceRequestId = ServiceRequestId,
+                MaterialCost = Model.MaterialCost,
+                LabourCost = Model.LabourCost,
+                Notes = Model.Notes?.Trim() ?? string.Empty
+            };
+
+            await Api.PostAsync<CreateQuoteRequest, Guid>(
+                "quotes",
+                request);
+
+            SuccessMessage =
+                "Your quote has been submitted successfully. " +
+                "The customer can now review it.";
+        }
+        catch (ApiException ex)
+        {
+            ErrorMessage = ex.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Unauthorized =>
+                    "Your session has expired. Please sign in again.",
+
+                System.Net.HttpStatusCode.Forbidden =>
+                    "You must accept this job before submitting a quote, " +
+                    "and you must be the assigned artisan.",
+
+                System.Net.HttpStatusCode.NotFound =>
+                    "The service request could not be found.",
+
+                System.Net.HttpStatusCode.BadRequest =>
+                    "The quote could not be submitted. Check the costs " +
+                    "and job status, then try again.",
+
+                _ => "The server could not submit your quote. Please try again."
+            };
+        }
+        catch (HttpRequestException)
+        {
+            ErrorMessage =
+                "Unable to connect to the server. Check your connection and try again.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "An unexpected error occurred while submitting the quote.";
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private sealed class CreateQuoteRequest
+    {
+        [Parameter]
+        public Guid ServiceRequestId { get; set; }
+
+        public decimal MaterialCost { get; set; }
+
+        public decimal LabourCost { get; set; }
+
+        public string Notes { get; set; } = string.Empty;
+    }
+}

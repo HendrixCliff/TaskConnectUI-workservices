@@ -41,19 +41,24 @@
                 <dd class="col-sm-9">@(Request.ArtisanName ?? "Not assigned")</dd>
             </dl>
 
+            
             <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-outline-primary"
+                <button type="button"
+                        class="btn btn-outline-primary"
                         @onclick="ViewQuote">
                     View quote
                 </button>
 
-                <button class="btn btn-primary"
-                        @onclick="WriteReview"
-                        disabled="@(Request.Status != JobStatus.Completed
-                            && Request.Status != JobStatus.LabourPaid)">
-                    Review artisan
-                </button>
+                @if (Request.Status == JobStatus.LabourPaid)
+                {
+                    <button type="button"
+                            class="btn btn-primary"
+                            @onclick="WriteReview">
+                        Review artisan
+                    </button>
+                }
             </div>
+
         </div>
     }
 </div>

@@ -93,10 +93,23 @@
                                 </p>
                             }
 
+                        
+                        <div class="d-grid gap-2">
                             <a href="@($"/artisan/job/{job.AssignmentId}")"
-                               class="btn btn-outline-primary w-100">
+                            class="btn btn-outline-primary">
                                 View Job
                             </a>
+
+                            @if (job.Accepted)
+                            {
+                                <a href="@($"/artisan/job/{job.ServiceRequestId}/quote")"
+                                class="btn btn-primary w-100 mt-2">
+                                    <i class="bi bi-file-earmark-text me-1"></i>
+                                    Create Quote
+                                </a>
+                            }
+                        </div>
+
                         </div>
                     </div>
                 </div>
