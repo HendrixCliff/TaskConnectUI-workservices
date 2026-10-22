@@ -215,27 +215,32 @@
 
         try
         {
-            switch (action)
-            {
-                case "accept":
-                    await JobAssignmentService.AcceptAsync(Request.AssignmentId);
-                    break;
+           switch (action)
+          {
+            case "accept":
+                await JobAssignmentService.AcceptAsync(
+                    Request.AssignmentId);
+                break;
 
-                case "reject":
-                    await JobAssignmentService.RejectAsync(Request.AssignmentId);
-                    break;
+            case "reject":
+                await JobAssignmentService.RejectAsync(
+                    Request.AssignmentId);
+                break;
 
-                case "start":
-                    await JobAssignmentService.StartAsync(Request.AssignmentId);
-                    break;
+            case "start":
+                await JobAssignmentService.StartAsync(
+                    Request.ServiceRequestId);
+                break;
 
-                case "complete":
-                    await JobAssignmentService.CompleteAsync(Request.AssignmentId);
-                    break;
+            case "complete":
+                await JobAssignmentService.CompleteAsync(
+                    Request.ServiceRequestId);
+                break;
 
-                default:
-                    throw new InvalidOperationException("Unsupported job action.");
-            }
+            default:
+                throw new InvalidOperationException(
+                    "Unsupported job action.");
+        }
 
             Message = $"Job {action} action completed successfully.";
 

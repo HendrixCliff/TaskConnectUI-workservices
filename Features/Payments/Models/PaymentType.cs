@@ -1,8 +1,7 @@
-
 namespace WorkServices.Web.Features.Payments.Models;
 
 public enum PaymentType
 {
-    Material,
-    Labour
+    Material = 1,
+    Labour = 2
 }

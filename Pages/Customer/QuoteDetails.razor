@@ -209,50 +209,58 @@
 
     protected override Task OnParametersSetAsync() => LoadQuotesAsync();
 
-    private async Task LoadQuotesAsync()
+   private async Task LoadQuotesAsync()
+{
+    Busy = true;
+    Error = null;
+    Message = null;
+    Quotes = [];
+
+    try
     {
-        Busy = true;
-        Error = null;
-        Message = null;
+        var quote = await Api.GetAsync<QuoteDto>(
+            $"quotes/service-request/{ServiceRequestId}");
 
-        try
-        {
-          
-            var quote = await Api.GetAsync<QuoteDto>(
-                $"quotes/service-request/{ServiceRequestId}");
-
-            Quotes = quote is null ? [] : [quote];
-            ActionErrors.Clear();
-        }
-        catch (ApiException ex)
-        {
-            Error = ex.StatusCode switch
-            {
-                HttpStatusCode.Unauthorized =>
-                    "Your session has expired. Please sign in again.",
-
-                HttpStatusCode.Forbidden =>
-                    "You are not authorized to view this quote.",
-
-                HttpStatusCode.NotFound =>
-                    "No quote was found for this service request.",
-
-                _ => "Unable to load the quote. Please try again."
-            };
-        }
-        catch (HttpRequestException)
-        {
-            Error = "Unable to connect to the server. Check your connection.";
-        }
-        catch (Exception)
-        {
-            Error = "The quote response could not be read. Please check the API response format.";
-        }
-        finally
-        {
-            Busy = false;
-        }
+        Quotes = quote is null ? [] : [quote];
+        ActionErrors.Clear();
     }
+    catch (ApiException ex)
+    {
+        Console.Error.WriteLine(
+            $"Loading quote failed. HTTP {(int)ex.StatusCode}: {ex}");
+
+        Error = ex.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized =>
+                "Your session has expired. Please sign in again.",
+
+            HttpStatusCode.Forbidden =>
+                "You are not authorized to view this quote.",
+
+            HttpStatusCode.NotFound =>
+                "No quote was found for this service request.",
+
+            _ =>
+                $"Unable to load the quote (HTTP {(int)ex.StatusCode}). Please try again."
+        };
+    }
+    catch (HttpRequestException ex)
+    {
+        Console.Error.WriteLine($"Quote network error: {ex}");
+
+        Error = "Unable to connect to the server. Check your connection.";
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Unexpected quote loading error: {ex}");
+
+        Error = "An unexpected error occurred while loading the quote.";
+    }
+    finally
+    {
+        Busy = false;
+    }
+}
 
     private async Task ApproveAsync(Guid quoteId)
     {
